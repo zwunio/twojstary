@@ -1,0 +1,4444 @@
+-- ============================================================
+-- BROKECHEAT • PRIVATE EXECUTOR BUILD
+-- Private testing only. Never for public games.
+-- Paste into your executor and Execute AFTER you spawn.
+-- ============================================================
+
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+	warn("[Brokecheat] No LocalPlayer. This must run on the client.")
+	return
+end
+
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Executors can inject early; wait for the camera.
+local cameraWait = 0
+while not Workspace.CurrentCamera and cameraWait < 40 do
+	task.wait(0.1)
+	cameraWait += 1
+end
+
+-- Double-execute guard: kill the old menu instead of crashing.
+if getgenv then
+	if getgenv().BrokecheatGui then
+		pcall(function() getgenv().BrokecheatGui:Destroy() end)
+	end
+	if getgenv().BrokecheatNotifyGui then
+		pcall(function() getgenv().BrokecheatNotifyGui:Destroy() end)
+	end
+end
+
+-- Hidden UI parent so game cleanup cannot delete the menu.
+local function getUiParent()
+	if gethui then
+		local ok, h = pcall(gethui)
+		if ok and h then return h end
+	end
+	local ok, core = pcall(function()
+		local c = game:GetService("CoreGui")
+		local probe = Instance.new("ScreenGui")
+		probe.Parent = c
+		probe:Destroy()
+		return c
+	end)
+	if ok and core then return core end
+	return PlayerGui
+end
+
+local UI_PARENT = getUiParent()
+
+pcall(function()
+	if identifyexecutor then
+		print("[Brokecheat] Executor detected:", identifyexecutor())
+	end
+end)
+
+local function clean(v)
+	if typeof(v) == "string" then
+		return (v:gsub("^%s+", ""):gsub("%s+$", ""))
+	end
+	return v
+end
+
+camera = Workspace.CurrentCamera
+RunService.RenderStepped:Connect(function()
+	camera = Workspace.CurrentCamera
+end)
+
+Options = Options or {}
+Library = Library or {}
+Library.Unloaded = false
+Library.CornerRadius = 12
+Library.ShowCustomCursor = true
+Library.NotifySide = "Right"
+Library.DPIScale = 1
+
+ThemeManager = ThemeManager or {}
+SaveManager = SaveManager or {}
+
+function ThemeManager:SetLibrary() end
+function ThemeManager:SetFolder() end
+function ThemeManager:ApplyToTab() end
+
+function SaveManager:SetLibrary() end
+function SaveManager:IgnoreThemeSettings() end
+function SaveManager:SetIgnoreIndexes() end
+function SaveManager:SetFolder() end
+function SaveManager:SetSubFolder() end
+function SaveManager:BuildConfigSection(tab)
+	if tab and tab.AddLabel then
+		tab:AddLabel("Native build: config saving is stubbed.", true)
+	end
+end
+function SaveManager:LoadAutoloadConfig() end
+
+for _, name in ipairs({"BrokecheatStudioNative", "BrokecheatStudio", "BrokecheatStartupError"}) do
+	local old = PlayerGui:FindFirstChild(name)
+	if old then old:Destroy() end
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "BrokecheatStudioNative"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = UI_PARENT
+
+local notifyGui = Instance.new("ScreenGui")
+notifyGui.Name = "BrokecheatNotifications"
+notifyGui.ResetOnSpawn = false
+notifyGui.IgnoreGuiInset = true
+notifyGui.DisplayOrder = 1002
+notifyGui.Parent = UI_PARENT
+
+if getgenv then
+	getgenv().BrokecheatGui = gui
+	getgenv().BrokecheatNotifyGui = notifyGui
+end
+
+local notifyHolder = Instance.new("Frame")
+notifyHolder.AnchorPoint = Vector2.new(1, 1)
+notifyHolder.Position = UDim2.new(1, -14, 1, -14)
+notifyHolder.Size = UDim2.fromOffset(280, 0)
+notifyHolder.AutomaticSize = Enum.AutomaticSize.Y
+notifyHolder.BackgroundTransparency = 1
+notifyHolder.Parent = notifyGui
+
+local notifyLayout = Instance.new("UIListLayout")
+notifyLayout.Padding = UDim.new(0, 6)
+notifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+notifyLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+notifyLayout.Parent = notifyHolder
+
+local main = Instance.new("Frame")
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
+main.Size = UDim2.fromOffset(820, 560)
+main.BackgroundColor3 = Color3.fromRGB(14, 15, 19)
+main.BorderSizePixel = 0
+main.Parent = gui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, Library.CornerRadius)
+mainCorner.Parent = main
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(70, 74, 88)
+mainStroke.Transparency = 0.15
+mainStroke.Parent = main
+
+local top = Instance.new("Frame")
+top.Size = UDim2.new(1, 0, 0, 58)
+top.BackgroundColor3 = Color3.fromRGB(21, 22, 28)
+top.BorderSizePixel = 0
+top.Parent = main
+
+local title = Instance.new("TextLabel")
+title.Position = UDim2.fromOffset(18, 7)
+title.Size = UDim2.new(1, -100, 0, 27)
+title.BackgroundTransparency = 1
+title.Text = "BROKECHEAT • PRIVATE EXECUTOR"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = top
+
+local status = Instance.new("TextLabel")
+status.Position = UDim2.fromOffset(19, 34)
+status.Size = UDim2.new(1, -100, 0, 16)
+status.BackgroundTransparency = 1
+status.Text = "EXECUTOR MODE • ONLINE"
+status.TextColor3 = Color3.fromRGB(145, 150, 165)
+status.Font = Enum.Font.Gotham
+status.TextSize = 11
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.Parent = top
+
+local close = Instance.new("TextButton")
+close.AnchorPoint = Vector2.new(1, 0.5)
+close.Position = UDim2.new(1, -14, 0.5, 0)
+close.Size = UDim2.fromOffset(32, 32)
+close.Text = "X"
+close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.TextColor3 = Color3.new(1, 1, 1)
+close.BackgroundColor3 = Color3.fromRGB(42, 43, 51)
+close.BorderSizePixel = 0
+close.Parent = top
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = close
+
+local sidebar = Instance.new("Frame")
+sidebar.Position = UDim2.fromOffset(0, 58)
+sidebar.Size = UDim2.new(0, 170, 1, -58)
+sidebar.BackgroundColor3 = Color3.fromRGB(17, 18, 23)
+sidebar.BorderSizePixel = 0
+sidebar.Parent = main
+
+local navPad = Instance.new("UIPadding")
+navPad.PaddingTop = UDim.new(0, 14)
+navPad.PaddingLeft = UDim.new(0, 10)
+navPad.PaddingRight = UDim.new(0, 10)
+navPad.Parent = sidebar
+
+local navLayout = Instance.new("UIListLayout")
+navLayout.Padding = UDim.new(0, 6)
+navLayout.SortOrder = Enum.SortOrder.LayoutOrder
+navLayout.Parent = sidebar
+
+local content = Instance.new("Frame")
+content.Position = UDim2.fromOffset(170, 58)
+content.Size = UDim2.new(1, -170, 1, -58)
+content.BackgroundTransparency = 1
+content.Parent = main
+
+local keybindFrame = Instance.new("Frame")
+keybindFrame.Size = UDim2.new(1, 0, 1, -58)
+keybindFrame.Position = UDim2.fromOffset(170, 58)
+keybindFrame.BackgroundColor3 = Color3.fromRGB(15, 16, 20)
+keybindFrame.BorderSizePixel = 0
+keybindFrame.Visible = false
+keybindFrame.Parent = main
+
+local keybindLabel = Instance.new("TextLabel")
+keybindLabel.Size = UDim2.new(1, -40, 0, 40)
+keybindLabel.Position = UDim2.fromOffset(20, 18)
+keybindLabel.BackgroundTransparency = 1
+keybindLabel.Text = "Keybinds"
+keybindLabel.TextColor3 = Color3.new(1, 1, 1)
+keybindLabel.Font = Enum.Font.GothamBold
+keybindLabel.TextSize = 18
+keybindLabel.TextXAlignment = Enum.TextXAlignment.Left
+keybindLabel.Parent = keybindFrame
+
+Library.KeybindFrame = keybindFrame
+
+local tabsByName = {}
+local navButtonsByName = {}
+local currentTab = nil
+local navOrder = 0
+
+local function selectTab(name)
+	currentTab = name
+	for n, t in pairs(tabsByName) do
+		t.Frame.Visible = (n == name)
+	end
+	for n, b in pairs(navButtonsByName) do
+		b.BackgroundColor3 = (n == name) and Color3.fromRGB(45, 47, 58) or Color3.fromRGB(17, 18, 23)
+	end
+end
+
+local function normalizeKeyCode(name)
+	name = clean(name)
+	if typeof(name) ~= "string" or name == "" or name:lower() == "none" then
+		return Enum.KeyCode.Unknown
+	end
+
+	local ok, key = pcall(function()
+		return Enum.KeyCode[name]
+	end)
+	if ok then return key end
+
+	ok, key = pcall(function()
+		return Enum.KeyCode[name:upper()]
+	end)
+	if ok then return key end
+
+	return Enum.KeyCode.Unknown
+end
+
+local keyPickers = {}
+local activePicker = nil
+local colorPalette = {
+	Color3.fromRGB(255, 255, 255),
+	Color3.fromRGB(255, 80, 80),
+	Color3.fromRGB(255, 160, 60),
+	Color3.fromRGB(255, 230, 80),
+	Color3.fromRGB(120, 255, 120),
+	Color3.fromRGB(90, 200, 255),
+	Color3.fromRGB(120, 120, 255),
+	Color3.fromRGB(200, 110, 255),
+	Color3.fromRGB(255, 120, 200),
+	Color3.fromRGB(35, 35, 40),
+}
+
+local function createKeyPicker(parent, allocate, name, data)
+	name = clean(name)
+	data = data or {}
+
+	local layoutOrder = allocate()
+	local key = normalizeKeyCode(data.Default)
+	local mode = clean(data.Mode or "Hold")
+	if mode == "" then mode = "Hold" end
+
+	local btn = Instance.new("TextButton")
+	btn.LayoutOrder = layoutOrder
+	btn.Size = UDim2.new(1, 0, 0, 34)
+	btn.BackgroundColor3 = Color3.fromRGB(29, 30, 38)
+	btn.BorderSizePixel = 0
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.GothamMedium
+	btn.TextSize = 13
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	btn.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+
+	local picker = {
+		Name = name,
+		Key = key,
+		Mode = mode,
+		State = false,
+		Button = btn,
+		Callback = data.Callback,
+	}
+
+	function picker:Refresh()
+		local keyName = picker.Key == Enum.KeyCode.Unknown and "None" or picker.Key.Name
+		btn.Text = "  " .. clean(data.Text or name) .. "  [" .. keyName .. "]"
+	end
+
+	function picker:GetState()
+		if picker.Mode == "Always" then
+			return true
+		end
+		return picker.State == true
+	end
+
+	function picker:SetValue(v)
+		picker.Key = normalizeKeyCode(v)
+		picker.State = false
+		picker:Refresh()
+	end
+
+	function picker:OnBegan(k)
+		if picker.Key == Enum.KeyCode.Unknown or k ~= picker.Key then
+			return
+		end
+
+		if picker.Mode == "Toggle" then
+			picker.State = not picker.State
+			if picker.Callback then
+				pcall(picker.Callback, picker.State)
+			end
+		elseif picker.Mode == "Hold" or picker.Mode == "Always" then
+			picker.State = true
+			if picker.Callback then
+				pcall(picker.Callback, true)
+			end
+		end
+	end
+
+	function picker:OnEnded(k)
+		if picker.Key == Enum.KeyCode.Unknown or k ~= picker.Key then
+			return
+		end
+
+		if picker.Mode == "Hold" and picker.State then
+			picker.State = false
+			if picker.Callback then
+				pcall(picker.Callback, false)
+			end
+		end
+	end
+
+	btn.MouseButton1Click:Connect(function()
+		activePicker = picker
+		btn.Text = "  Press any key..."
+	end)
+
+	picker:Refresh()
+	Options[name] = picker
+	table.insert(keyPickers, picker)
+
+	return picker
+end
+
+local function createColorPicker(parent, allocate, name, data)
+	name = clean(name)
+	data = data or {}
+
+	local layoutOrder = allocate()
+	local current = data.Default or Color3.new(1, 1, 1)
+	local paletteIndex = 1
+
+	local btn = Instance.new("TextButton")
+	btn.LayoutOrder = layoutOrder
+	btn.Size = UDim2.new(1, 0, 0, 34)
+	btn.BackgroundColor3 = current
+	btn.BorderSizePixel = 0
+	btn.Text = "  " .. clean(data.Text or name) .. "  [Click to cycle color]"
+	btn.TextColor3 = Color3.new(0, 0, 0)
+	btn.Font = Enum.Font.GothamMedium
+	btn.TextSize = 13
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	btn.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(70, 74, 88)
+	stroke.Transparency = 0.25
+	stroke.Parent = btn
+
+	local obj
+
+	local function applyColor(c, fire)
+		current = c
+		btn.BackgroundColor3 = c
+		if obj then
+			obj.Value = c
+		end
+		if fire and data.Callback then
+			pcall(data.Callback, c)
+		end
+	end
+
+	btn.MouseButton1Click:Connect(function()
+		paletteIndex = (paletteIndex % #colorPalette) + 1
+		applyColor(colorPalette[paletteIndex], true)
+	end)
+
+	obj = {
+		Value = current,
+		SetValue = function(self, c)
+			applyColor(c, true)
+		end,
+	}
+
+	Options[name] = obj
+	applyColor(current, false)
+
+	return obj
+end
+
+local function createGroupBox(parent, title)
+	local box = Instance.new("Frame")
+	box.Size = UDim2.new(1, 0, 0, 0)
+	box.AutomaticSize = Enum.AutomaticSize.Y
+	box.BackgroundColor3 = Color3.fromRGB(21, 22, 28)
+	box.BorderSizePixel = 0
+	box.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = box
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 10)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = box
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = box
+
+	local header = Instance.new("TextLabel")
+	header.LayoutOrder = 0
+	header.Size = UDim2.new(1, 0, 0, 28)
+	header.BackgroundTransparency = 1
+	header.Text = clean(title)
+	header.TextColor3 = Color3.new(1, 1, 1)
+	header.Font = Enum.Font.GothamBold
+	header.TextSize = 15
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.TextWrapped = true
+	header.Parent = box
+
+	local order = 0
+	local function allocate()
+		order += 1
+		return order
+	end
+
+	local controls = {}
+
+	function controls:AddLabel(text, wrapped)
+		local l = Instance.new("TextLabel")
+		l.LayoutOrder = allocate()
+		l.Size = UDim2.new(1, 0, 0, 0)
+		l.AutomaticSize = Enum.AutomaticSize.Y
+		l.BackgroundTransparency = 1
+		l.Text = clean(text)
+		l.TextWrapped = wrapped == true
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.TextYAlignment = Enum.TextYAlignment.Top
+		l.Font = Enum.Font.Gotham
+		l.TextSize = 13
+		l.TextColor3 = Color3.fromRGB(185, 189, 200)
+		l.Parent = box
+
+		local obj = {
+			Instance = l,
+			Parent = box,
+		}
+
+		function obj:SetText(t)
+			l.Text = clean(t)
+		end
+
+		function obj:AddKeyPicker(name, data)
+			return createKeyPicker(box, allocate, name, data)
+		end
+
+		function obj:AddColorPicker(name, data)
+			return createColorPicker(box, allocate, name, data)
+		end
+
+		return obj
+	end
+
+	function controls:AddDivider()
+		local d = Instance.new("Frame")
+		d.LayoutOrder = allocate()
+		d.Size = UDim2.new(1, 0, 0, 6)
+		d.BackgroundTransparency = 1
+		d.Parent = box
+		return d
+	end
+
+	function controls:AddButton(a, b)
+		local text, fn
+
+		if typeof(a) == "table" then
+			text = a.Text or a.Name or "Button"
+			fn = a.Func or a.Callback or function() end
+		else
+			text = tostring(a)
+			fn = b or function() end
+		end
+
+		local btn = Instance.new("TextButton")
+		btn.LayoutOrder = allocate()
+		btn.Size = UDim2.new(1, 0, 0, 36)
+		btn.BackgroundColor3 = Color3.fromRGB(29, 30, 38)
+		btn.BorderSizePixel = 0
+		btn.Text = "  " .. clean(text)
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 13
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Parent = box
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = btn
+
+		btn.MouseButton1Click:Connect(function()
+			pcall(fn)
+		end)
+
+		return {
+			Instance = btn,
+			SetText = function(self, t)
+				btn.Text = "  " .. clean(t)
+			end,
+		}
+	end
+
+	function controls:AddToggle(name, data)
+		name = clean(name)
+		data = data or {}
+
+		local text = clean(data.Text or name)
+		local state = data.Default == true
+
+		local btn = Instance.new("TextButton")
+		btn.LayoutOrder = allocate()
+		btn.Size = UDim2.new(1, 0, 0, 36)
+		btn.BorderSizePixel = 0
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 13
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Parent = box
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = btn
+
+		local obj
+
+		local function refresh()
+			btn.Text = "  " .. text .. "    [" .. (state and "ON" or "OFF") .. "]"
+			btn.BackgroundColor3 = state and Color3.fromRGB(42, 62, 51) or Color3.fromRGB(29, 30, 38)
+			if obj then
+				obj.Value = state
+			end
+		end
+
+		local function applyState(v, fire)
+			state = v == true
+			refresh()
+			if fire and data.Callback then
+				pcall(data.Callback, state)
+			end
+		end
+
+		btn.MouseButton1Click:Connect(function()
+			applyState(not state, true)
+		end)
+
+		obj = {
+			Value = state,
+			SetValue = function(self, v)
+				applyState(v, true)
+			end,
+			GetState = function(self)
+				return state
+			end,
+		}
+
+		Options[name] = obj
+		refresh()
+
+		if data.Callback then
+			task.defer(function()
+				if not Library.Unloaded then
+					pcall(data.Callback, state)
+				end
+			end)
+		end
+
+		return obj
+	end
+
+	function controls:AddSlider(name, data)
+		name = clean(name)
+		data = data or {}
+
+		local min = tonumber(data.Min) or 0
+		local max = tonumber(data.Max) or 100
+		local rounding = tonumber(data.Rounding) or 0
+		local value = tonumber(data.Default) or min
+
+		local container = Instance.new("Frame")
+		container.LayoutOrder = allocate()
+		container.Size = UDim2.new(1, 0, 0, 48)
+		container.BackgroundTransparency = 1
+		container.Parent = box
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -70, 0, 18)
+		label.BackgroundTransparency = 1
+		label.Text = "  " .. clean(data.Text or name)
+		label.TextColor3 = Color3.fromRGB(185, 189, 200)
+		label.Font = Enum.Font.Gotham
+		label.TextSize = 13
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = container
+
+		local valueLabel = Instance.new("TextLabel")
+		valueLabel.AnchorPoint = Vector2.new(1, 0)
+		valueLabel.Position = UDim2.new(1, 0, 0, 0)
+		valueLabel.Size = UDim2.new(0, 70, 0, 18)
+		valueLabel.BackgroundTransparency = 1
+		valueLabel.Text = ""
+		valueLabel.TextColor3 = Color3.fromRGB(220, 223, 235)
+		valueLabel.Font = Enum.Font.GothamMedium
+		valueLabel.TextSize = 12
+		valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+		valueLabel.Parent = container
+
+		local track = Instance.new("TextButton")
+		track.Position = UDim2.new(0, 0, 0, 24)
+		track.Size = UDim2.new(1, 0, 0, 10)
+		track.BackgroundColor3 = Color3.fromRGB(35, 36, 44)
+		track.BorderSizePixel = 0
+		track.AutoButtonColor = false
+		track.Text = ""
+		track.Parent = container
+
+		local trackCorner = Instance.new("UICorner")
+		trackCorner.CornerRadius = UDim.new(1, 0)
+		trackCorner.Parent = track
+
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.fromScale(0, 1)
+		fill.BackgroundColor3 = Color3.fromRGB(120, 170, 255)
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+
+		local fillCorner = Instance.new("UICorner")
+		fillCorner.CornerRadius = UDim.new(1, 0)
+		fillCorner.Parent = fill
+
+		local obj
+		local dragging = false
+
+		local function formatValue(v)
+			if rounding == 0 then
+				return tostring(math.floor(v + 0.5))
+			else
+				return string.format("%." .. rounding .. "f", v)
+			end
+		end
+
+		local function clampRound(v)
+			v = math.clamp(v, min, max)
+			if rounding == 0 then
+				return math.floor(v + 0.5)
+			end
+			local mult = 10 ^ rounding
+			return math.floor(v * mult + 0.5) / mult
+		end
+
+		local function setValue(v, fire)
+			value = clampRound(v)
+			fill.Size = UDim2.fromScale(max > min and ((value - min) / (max - min)) or 0, 1)
+			valueLabel.Text = formatValue(value)
+			if obj then
+				obj.Value = value
+			end
+			if fire and data.Callback then
+				pcall(data.Callback, value)
+			end
+		end
+
+		local function updateFromX(x)
+			local absPos = track.AbsolutePosition.X
+			local absSize = math.max(track.AbsoluteSize.X, 1)
+			local rel = math.clamp((x - absPos) / absSize, 0, 1)
+			local raw = min + rel * (max - min)
+			setValue(raw, true)
+		end
+
+		track.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				updateFromX(input.Position.X)
+			end
+		end)
+
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+				updateFromX(input.Position.X)
+			end
+		end)
+
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+
+		obj = {
+			Value = value,
+			SetValue = function(self, v)
+				setValue(v, true)
+			end,
+		}
+
+		Options[name] = obj
+		setValue(value, false)
+
+		if data.Callback then
+			task.defer(function()
+				if not Library.Unloaded then
+					pcall(data.Callback, value)
+				end
+			end)
+		end
+
+		return obj
+	end
+
+	function controls:AddDropdown(name, data)
+		name = clean(name)
+		data = data or {}
+
+		local values = {}
+		for _, v in ipairs(data.Values or {}) do
+			table.insert(values, clean(v))
+		end
+
+		local current = clean(data.Default or values[1] or "")
+
+		local btn = Instance.new("TextButton")
+		btn.LayoutOrder = allocate()
+		btn.Size = UDim2.new(1, 0, 0, 36)
+		btn.BackgroundColor3 = Color3.fromRGB(29, 30, 38)
+		btn.BorderSizePixel = 0
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 13
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Parent = box
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = btn
+
+		local obj
+
+		local function refresh()
+			btn.Text = "  " .. clean(data.Text or name) .. ": " .. tostring(current)
+		end
+
+		local function setValue(v, fire)
+			current = clean(v)
+			refresh()
+			if obj then
+				obj.Value = current
+			end
+			if fire and data.Callback then
+				pcall(data.Callback, current)
+			end
+		end
+
+		btn.MouseButton1Click:Connect(function()
+			if #values == 0 then return end
+			local idx = table.find(values, current) or 0
+			idx = (idx % #values) + 1
+			setValue(values[idx], true)
+		end)
+
+		obj = {
+			Value = current,
+			SetValue = function(self, v)
+				setValue(v, true)
+			end,
+		}
+
+		Options[name] = obj
+		refresh()
+
+		if data.Callback then
+			task.defer(function()
+				if not Library.Unloaded then
+					pcall(data.Callback, current)
+				end
+			end)
+		end
+
+		return obj
+	end
+
+	return controls
+end
+
+local function createTab(name, icon)
+	name = clean(name)
+
+	if tabsByName[name] then
+		return tabsByName[name]
+	end
+
+	navOrder += 1
+
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 4
+	page.CanvasSize = UDim2.new(0, 0, 0, 0)
+	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.Visible = false
+	page.Parent = content
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 18)
+	pad.PaddingLeft = UDim.new(0, 20)
+	pad.PaddingRight = UDim.new(0, 20)
+	pad.Parent = page
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 10)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = page
+
+	local navBtn = Instance.new("TextButton")
+	navBtn.LayoutOrder = navOrder
+	navBtn.Size = UDim2.new(1, 0, 0, 39)
+	navBtn.BackgroundColor3 = Color3.fromRGB(17, 18, 23)
+	navBtn.BorderSizePixel = 0
+	navBtn.Text = "  " .. name
+	navBtn.TextColor3 = Color3.new(1, 1, 1)
+	navBtn.Font = Enum.Font.GothamMedium
+	navBtn.TextSize = 13
+	navBtn.TextXAlignment = Enum.TextXAlignment.Left
+	navBtn.Parent = sidebar
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = navBtn
+
+	local tab = {
+		Name = name,
+		Frame = page,
+		AddLeftGroupbox = function(self, title)
+			return createGroupBox(self.Frame, title)
+		end,
+		AddRightGroupbox = function(self, title)
+			return createGroupBox(self.Frame, title)
+		end,
+	}
+
+	navBtn.MouseButton1Click:Connect(function()
+		selectTab(name)
+	end)
+
+	tabsByName[name] = tab
+	navButtonsByName[name] = navBtn
+
+	if not currentTab then
+		selectTab(name)
+	end
+
+	return tab
+end
+
+Window = {
+	AlwaysOnTop = false,
+	AddTab = function(self, name, icon)
+		return createTab(name, icon)
+	end,
+}
+
+function Window:SetAlwaysOnTop(v)
+	self.AlwaysOnTop = v == true
+	gui.DisplayOrder = self.AlwaysOnTop and 1005 or 999
+end
+
+function Window:SetCornerRadius(v)
+	mainCorner.CornerRadius = UDim.new(0, tonumber(v) or 0)
+end
+
+function Library:Toggle(state)
+	if state == nil then
+		gui.Enabled = not gui.Enabled
+	else
+		gui.Enabled = state == true
+	end
+end
+
+function Library:SetNotifySide(side)
+	side = clean(side)
+	Library.NotifySide = side
+
+	if side == "Left" then
+		notifyHolder.AnchorPoint = Vector2.new(0, 1)
+		notifyHolder.Position = UDim2.new(0, 14, 1, -14)
+	else
+		notifyHolder.AnchorPoint = Vector2.new(1, 1)
+		notifyHolder.Position = UDim2.new(1, -14, 1, -14)
+	end
+end
+
+function Library:SetDPIScale(scale)
+	scale = tonumber(scale) or 100
+	if scale > 10 then
+		scale = scale / 100
+	end
+	Library.DPIScale = scale
+	main.Size = UDim2.fromOffset(math.floor(820 * scale), math.floor(560 * scale))
+end
+
+function Library:Notify(info)
+	if Library.Unloaded then return end
+	info = info or {}
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 0, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.BackgroundColor3 = Color3.fromRGB(22, 23, 29)
+	frame.BorderSizePixel = 0
+	frame.Parent = notifyHolder
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(70, 74, 88)
+	stroke.Transparency = 0.25
+	stroke.Parent = frame
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+	pad.Parent = frame
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = frame
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.LayoutOrder = 1
+	titleLabel.Size = UDim2.new(1, 0, 0, 0)
+	titleLabel.AutomaticSize = Enum.AutomaticSize.Y
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = clean(info.Title or "Notification")
+	titleLabel.TextColor3 = Color3.new(1, 1, 1)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 13
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.TextWrapped = true
+	titleLabel.Parent = frame
+
+	local descLabel = Instance.new("TextLabel")
+	descLabel.LayoutOrder = 2
+	descLabel.Size = UDim2.new(1, 0, 0, 0)
+	descLabel.AutomaticSize = Enum.AutomaticSize.Y
+	descLabel.BackgroundTransparency = 1
+	descLabel.Text = clean(info.Description or "")
+	descLabel.TextColor3 = Color3.fromRGB(170, 174, 186)
+	descLabel.Font = Enum.Font.Gotham
+	descLabel.TextSize = 12
+	descLabel.TextXAlignment = Enum.TextXAlignment.Left
+	descLabel.TextWrapped = true
+	descLabel.Parent = frame
+
+	task.delay(tonumber(info.Time) or 3, function()
+		if frame and frame.Parent then
+			frame:Destroy()
+		end
+	end)
+end
+
+function Library:AddDraggableLabel(text)
+	local f = Instance.new("Frame")
+	f.Size = UDim2.fromOffset(220, 28)
+	f.Position = UDim2.fromOffset(18, 18)
+	f.BackgroundColor3 = Color3.fromRGB(21, 22, 28)
+	f.BorderSizePixel = 0
+	f.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = f
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(70, 74, 88)
+	stroke.Transparency = 0.25
+	stroke.Parent = f
+
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.fromScale(1, 1)
+	l.BackgroundTransparency = 1
+	l.Text = "  " .. clean(text)
+	l.TextColor3 = Color3.new(1, 1, 1)
+	l.Font = Enum.Font.GothamMedium
+	l.TextSize = 12
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.Parent = f
+
+	local dragging = false
+	local dragStart, startPos
+
+	f.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = f.Position
+		end
+	end)
+
+	f.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			f.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+
+	return f
+end
+
+function Library:Unload()
+	Library.Unloaded = true
+
+	pcall(function()
+		RunService:UnbindFromRenderStep("PrivateProjectAim")
+	end)
+
+	if getgenv then
+		getgenv().BrokecheatGui = nil
+		getgenv().BrokecheatNotifyGui = nil
+	end
+
+	if notifyGui and notifyGui.Parent then
+		notifyGui:Destroy()
+	end
+
+	if gui and gui.Parent then
+		gui:Destroy()
+	end
+end
+
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+top.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+	end
+end)
+
+top.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+
+	if activePicker then
+		if input.KeyCode == Enum.KeyCode.Escape then
+			local p = activePicker
+			activePicker = nil
+			p:Refresh()
+			return
+		end
+
+		local p = activePicker
+		activePicker = nil
+		p.Key = input.KeyCode
+		p.State = false
+		p:Refresh()
+		return
+	end
+
+	for _, picker in ipairs(keyPickers) do
+		picker:OnBegan(input.KeyCode)
+	end
+
+	local menuKey = Enum.KeyCode.RightShift
+	local bind = Library.ToggleKeybind
+	if bind and bind.Key and bind.Key ~= Enum.KeyCode.Unknown then
+		menuKey = bind.Key
+	end
+
+	if not processed and input.KeyCode == menuKey and gui.Parent then
+		gui.Enabled = not gui.Enabled
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then
+		return
+	end
+
+	for _, picker in ipairs(keyPickers) do
+		picker:OnEnded(input.KeyCode)
+	end
+end)
+
+close.MouseButton1Click:Connect(function()
+	gui.Enabled = false
+end)
+
+MainTab = Window:AddTab("Main", "home")
+
+local HomeBox = MainTab:AddLeftGroupbox("Home")
+HomeBox:AddLabel("Brokecheat Private Executor Build", true)
+HomeBox:AddLabel("Private testing build. All modules below are preserved from your original project.", true)
+HomeBox:AddButton("Run UI Self-Test", function()
+	status.Text = "EXECUTOR MODE • SELF-TEST PASSED"
+	Library:Notify({
+		Title = "Brokecheat",
+		Description = "Native UI self-test passed.",
+		Time = 2,
+	})
+end)
+
+Crosshair = Crosshair or nil
+RainGui = RainGui or nil
+SnowGui = SnowGui or nil
+rainDrops = rainDrops or {}
+snowflakes = snowflakes or {}
+WeatherConnection = WeatherConnection or nil
+
+--// Private Studio Test: Skin System
+local TestSkins = {
+	{ Name = "Default", Material = Enum.Material.SmoothPlastic },
+	{ Name = "Red", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(220, 60, 60) },
+	{ Name = "Blue", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(60, 120, 230) },
+	{ Name = "Gold", Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 200, 60) },
+	{ Name = "Neon", Material = Enum.Material.Neon, Color = Color3.fromRGB(80, 255, 180) },
+}
+
+local UnlockedTestSkins = {}
+local CurrentTestSkin = "Default"
+
+local function unlockAllTestSkins()
+	for _, skin in ipairs(TestSkins) do
+		UnlockedTestSkins[skin.Name] = true
+	end
+end
+
+local function applyTestSkin(skinName)
+	local character = LocalPlayer.Character
+	if not character then return false end
+
+	local selected
+	for _, skin in ipairs(TestSkins) do
+		if skin.Name == skinName then
+			selected = skin
+			break
+		end
+	end
+
+	if not selected or not UnlockedTestSkins[skinName] then
+		return false
+	end
+
+	for _, obj in ipairs(character:GetDescendants()) do
+		if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+			if selected.Color then
+				obj.Color = selected.Color
+			end
+			obj.Material = selected.Material or Enum.Material.SmoothPlastic
+		end
+	end
+
+	CurrentTestSkin = skinName
+	return true
+end
+
+local SkinTab = Window:AddTab("Skins", "palette")
+local SkinBox = SkinTab:AddLeftGroupbox("Private Test Skins")
+SkinBox:AddLabel("These skins exist only in this private test project.")
+
+SkinBox:AddButton({
+	Text = "All Test Skins",
+	Func = function()
+		unlockAllTestSkins()
+		Library:Notify({
+			Title = "Test Skins",
+			Description = "All defined test skins are now unlocked.",
+			Time = 3,
+		})
+	end,
+	DoubleClick = false,
+})
+
+local skinNames = {}
+for _, skin in ipairs(TestSkins) do
+	table.insert(skinNames, skin.Name)
+end
+
+SkinBox:AddDropdown("TestSkin", {
+	Values = skinNames,
+	Default = "Default",
+	Multi = false,
+	Text = "Test Skin",
+	Tooltip = "Choose one of the skins defined in TestSkins.",
+})
+
+SkinBox:AddButton({
+	Text = "Apply Selected Skin",
+	Func = function()
+		local selected = Options.TestSkin and Options.TestSkin.Value
+		if selected and applyTestSkin(selected) then
+			Library:Notify({
+				Title = "Test Skin",
+				Description = selected .. " applied to your test character.",
+				Time = 3,
+			})
+		else
+			Library:Notify({
+				Title = "Test Skin",
+				Description = "Unlock the test skins first or select a valid skin.",
+				Time = 3,
+			})
+		end
+	end,
+	DoubleClick = false,
+})
+
+SkinBox:AddButton({
+	Text = "Reset Skin",
+	Func = function()
+		unlockAllTestSkins()
+		applyTestSkin("Default")
+		if Options.TestSkin then
+			Options.TestSkin:SetValue("Default")
+		end
+	end,
+	DoubleClick = false,
+})
+
+--// Private Studio Test: ESP
+local ESPEnabled = false
+local ESPHealth = true
+local ESPDistance = true
+local ESPNames = true
+local ESPHighlights = true
+
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "PrivateTestESP"
+ESPFolder.Parent = PlayerGui
+
+local function getTestTargets()
+	local result = {}
+	local seen = {}
+
+	local folder = Workspace:FindFirstChild("TestTargets")
+	if folder then
+		for _, target in ipairs(folder:GetChildren()) do
+			local humanoid = target:FindFirstChildOfClass("Humanoid")
+			local root = target:FindFirstChild("HumanoidRootPart")
+			if humanoid and root and humanoid.Health > 0 then
+				table.insert(result, target)
+				seen[target] = true
+			end
+		end
+	end
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer and plr.Character and not seen[plr.Character] then
+			local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+			local root = plr.Character:FindFirstChild("HumanoidRootPart")
+			if humanoid and root and humanoid.Health > 0 then
+				table.insert(result, plr.Character)
+				seen[plr.Character] = true
+			end
+		end
+	end
+
+	return result
+end
+
+local function clearESP()
+	for _, obj in ipairs(ESPFolder:GetChildren()) do
+		obj:Destroy()
+	end
+
+	local folder = Workspace:FindFirstChild("TestTargets")
+	if folder then
+		for _, target in ipairs(folder:GetChildren()) do
+			local old = target:FindFirstChild("PrivateTestHighlight")
+			if old then
+				old:Destroy()
+			end
+		end
+	end
+end
+
+local function createESP(target)
+	local root = target:FindFirstChild("HumanoidRootPart")
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then
+		return
+	end
+
+	if ESPHighlights then
+		local highlight = target:FindFirstChild("PrivateTestHighlight")
+		if not highlight then
+			highlight = Instance.new("Highlight")
+			highlight.Name = "PrivateTestHighlight"
+			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			highlight.FillTransparency = 0.72
+			highlight.OutlineTransparency = 0.05
+			highlight.FillColor = Color3.fromRGB(90, 150, 255)
+			highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+			highlight.Parent = target
+		end
+	end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESP_" .. target.Name
+	billboard.Adornee = root
+	billboard.Size = UDim2.fromOffset(220, 60)
+	billboard.StudsOffset = Vector3.new(0, 3.2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = ESPFolder
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 13
+	label.TextStrokeTransparency = 0.2
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Parent = billboard
+
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not billboard.Parent or not target.Parent or humanoid.Health <= 0 then
+			connection:Disconnect()
+			if billboard.Parent then
+				billboard:Destroy()
+			end
+			return
+		end
+
+		if not camera then return end
+
+		local distance = (camera.CFrame.Position - root.Position).Magnitude
+		local hp = math.max(0, math.floor(humanoid.Health))
+		local parts = {}
+
+		if ESPNames then
+			table.insert(parts, target.Name)
+		end
+
+		if ESPDistance then
+			table.insert(parts, string.format("%dm", math.floor(distance + 0.5)))
+		end
+
+		if ESPHealth then
+			table.insert(parts, "HP " .. hp)
+		end
+
+		label.Text = table.concat(parts, "  |  ")
+	end)
+end
+
+local function updateESP()
+	clearESP()
+	if not ESPEnabled then
+		return
+	end
+
+	for _, target in ipairs(getTestTargets()) do
+		createESP(target)
+	end
+end
+
+local targetFolderForESP = Workspace:FindFirstChild("TestTargets")
+if targetFolderForESP then
+	targetFolderForESP.ChildAdded:Connect(function()
+		task.defer(updateESP)
+	end)
+
+	targetFolderForESP.ChildRemoved:Connect(function()
+		task.defer(updateESP)
+	end)
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function()
+		task.defer(updateESP)
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function()
+	task.defer(updateESP)
+end)
+
+local ESPTab = Window:AddTab("ESP / Aim", "eye")
+local ESPBox = ESPTab:AddLeftGroupbox("Test ESP")
+ESPBox:AddLabel("Detects TestTargets and normal player characters in this private project.", true)
+
+ESPBox:AddToggle("TestESP", {
+	Text = "ESP",
+	Default = true,
+	Callback = function(value)
+		ESPEnabled = value
+		updateESP()
+	end,
+})
+
+ESPBox:AddToggle("ESPNames", {
+	Text = "Names",
+	Default = true,
+	Callback = function(value)
+		ESPNames = value
+		updateESP()
+	end,
+})
+
+ESPBox:AddToggle("ESPHealth", {
+	Text = "Health",
+	Default = true,
+	Callback = function(value)
+		ESPHealth = value
+		updateESP()
+	end,
+})
+
+ESPBox:AddToggle("ESPDistance", {
+	Text = "Distance",
+	Default = true,
+	Callback = function(value)
+		ESPDistance = value
+		updateESP()
+	end,
+})
+
+ESPBox:AddToggle("ESPHighlights", {
+	Text = "Highlights",
+	Default = true,
+	Callback = function(value)
+		ESPHighlights = value
+		updateESP()
+	end,
+})
+
+ESPBox:AddToggle("TestCrosshair", {
+	Text = "Crosshair",
+	Default = true,
+	Callback = function(value)
+		if Crosshair then Crosshair.Visible = value end
+	end,
+})
+
+ESPBox:AddButton({
+	Text = "Refresh ESP",
+	Func = updateESP,
+	DoubleClick = false,
+})
+
+task.defer(updateESP)
+
+-- ============================================================
+-- PRIVATE AIM SYSTEM
+-- ============================================================
+
+local AimbotEnabled = false
+local AimbotFOVEnabled = true
+local AimbotWallCheck = false
+local AimbotSwitching = true
+local AimbotFOV = 200
+local AimbotSmoothness = 0.20
+local AimKeyDown = false
+local CurrentAimTarget = nil
+
+local SilentAimEnabled = false
+local SilentAimFOV = 200
+local SilentAimTarget = nil
+
+local function isValidAimTarget(target)
+	if not target or not target.Parent then
+		return false
+	end
+
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	local root = target:FindFirstChild("HumanoidRootPart")
+	return humanoid and root and humanoid.Health > 0
+end
+
+local function getAimPart(target)
+	local preferred = _G.PrivateProjectAimPart or "HumanoidRootPart"
+	return target:FindFirstChild(preferred)
+		or target:FindFirstChild("HumanoidRootPart")
+		or target:FindFirstChild("Head")
+end
+
+local function hasLineOfSight(target)
+	if not AimbotWallCheck then
+		return true
+	end
+
+	local root = target:FindFirstChild("HumanoidRootPart")
+	if not root or not camera then
+		return false
+	end
+
+	local origin = camera.CFrame.Position
+	local direction = root.Position - origin
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {
+		LocalPlayer.Character,
+		target
+	}
+
+	local hit = Workspace:Raycast(origin, direction, params)
+	return hit == nil
+end
+
+local function findClosestTarget(maxFOV)
+	camera = Workspace.CurrentCamera
+	if not camera then
+		return nil
+	end
+
+	local center = Vector2.new(
+		camera.ViewportSize.X * 0.5,
+		camera.ViewportSize.Y * 0.5
+	)
+
+	local closest = nil
+	local closestDistance = maxFOV or math.huge
+
+	for _, target in ipairs(getTestTargets()) do
+		if isValidAimTarget(target) and hasLineOfSight(target) then
+			local root = getAimPart(target)
+			if not root then
+				continue
+			end
+
+			local maxDistance = _G.PrivateProjectMaxTargetDistance or math.huge
+			if LocalPlayer.Character then
+				local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+				if myRoot and (root.Position - myRoot.Position).Magnitude > maxDistance then
+					continue
+				end
+			end
+
+			local screenPos, onScreen = camera:WorldToViewportPoint(root.Position)
+			if onScreen and screenPos.Z > 0 then
+				local distance = (
+					Vector2.new(screenPos.X, screenPos.Y) - center
+				).Magnitude
+
+				if distance <= closestDistance then
+					closestDistance = distance
+					closest = target
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+local function getSilentAimTarget()
+	if not SilentAimEnabled then
+		SilentAimTarget = nil
+		return nil
+	end
+
+	SilentAimTarget = findClosestTarget(SilentAimFOV)
+	return SilentAimTarget
+end
+
+_G.PrivateProjectGetSilentAimTarget = getSilentAimTarget
+
+local function aimAtTarget(target, deltaTime)
+	camera = Workspace.CurrentCamera
+	if not camera or not isValidAimTarget(target) then
+		return
+	end
+
+	local root = getAimPart(target)
+	if not root then
+		return
+	end
+
+	local desired = CFrame.lookAt(camera.CFrame.Position, root.Position)
+	local alpha = 1 - math.pow(
+		1 - math.clamp(AimbotSmoothness, 0.01, 1),
+		deltaTime * 60
+	)
+
+	camera.CFrame = camera.CFrame:Lerp(desired, alpha)
+end
+
+local AimTab = ESPTab
+
+-- ============================================================
+-- PRIVATE RAGEBOT
+-- ============================================================
+
+local RagebotEnabled = false
+local RagebotFOVEnabled = false
+local RagebotFOV = 360
+local RagebotWallCheck = false
+local RagebotPart = "Head"
+local RagebotSwitching = true
+local RagebotTarget = nil
+local RagebotPriority = "Closest"
+local RagebotMaxDistance = 2000
+local RagebotKeyHeld = false
+
+local function getRageTargetPart(model)
+	if not model then return nil end
+	return model:FindFirstChild(RagebotPart)
+		or model:FindFirstChild("Head")
+		or model:FindFirstChild("HumanoidRootPart")
+end
+
+local function isRageValid(model)
+	if not model or not model.Parent then return false end
+	if model == LocalPlayer.Character then return false end
+
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	local part = getRageTargetPart(model)
+	if not hum or hum.Health <= 0 or not part then return false end
+
+	local root = model:FindFirstChild("HumanoidRootPart") or part
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and (myChar:FindFirstChild("HumanoidRootPart") or myChar:FindFirstChild("Head"))
+	if not myRoot then return false end
+
+	if (root.Position - myRoot.Position).Magnitude > RagebotMaxDistance then return false end
+
+	return true
+end
+
+local function rageVisible(part)
+	if not RagebotWallCheck or not part or not camera then return true end
+
+	local origin = camera.CFrame.Position
+	local direction = part.Position - origin
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {LocalPlayer.Character, camera}
+
+	local hit = Workspace:Raycast(origin, direction, params)
+	return not hit or hit.Instance:IsDescendantOf(part.Parent)
+end
+
+local function collectRageTargets()
+	local targets = {}
+
+	local folder = Workspace:FindFirstChild("TestTargets")
+	if folder then
+		for _, child in ipairs(folder:GetChildren()) do
+			if isRageValid(child) then table.insert(targets, child) end
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and isRageValid(player.Character) then
+			table.insert(targets, player.Character)
+		end
+	end
+
+	return targets
+end
+
+local function chooseRageTarget()
+	local mouse = UserInputService:GetMouseLocation()
+	local best, bestScore = nil, math.huge
+
+	for _, target in ipairs(collectRageTargets()) do
+		local part = getRageTargetPart(target)
+		if part and rageVisible(part) then
+			local point, onScreen = camera:WorldToViewportPoint(part.Position)
+			if onScreen and point.Z > 0 then
+				local screenDist = (Vector2.new(point.X, point.Y) - mouse).Magnitude
+				if (not RagebotFOVEnabled or screenDist <= RagebotFOV) then
+					local root = target:FindFirstChild("HumanoidRootPart") or part
+					local myRoot = LocalPlayer.Character and (LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Head"))
+					local worldDist = myRoot and (root.Position - myRoot.Position).Magnitude or math.huge
+					local score = RagebotPriority == "FOV" and screenDist or worldDist
+					if score < bestScore then best, bestScore = target, score end
+				end
+			end
+		end
+	end
+
+	return best
+end
+
+local function rageSnap(target)
+	local part = getRageTargetPart(target)
+	if not part or not camera then return end
+	camera.CFrame = CFrame.lookAt(camera.CFrame.Position, part.Position)
+end
+
+local RageBox = AimTab:AddLeftGroupbox("Ragebot • Private")
+
+RageBox:AddToggle("Ragebot", {
+	Text = "Ragebot",
+	Default = false,
+	Callback = function(value)
+		RagebotEnabled = value
+		if not value then RagebotTarget = nil end
+	end
+})
+
+RageBox:AddToggle("RagebotFOV", {
+	Text = "Use FOV Limit",
+	Default = false,
+	Callback = function(value) RagebotFOVEnabled = value end
+})
+
+RageBox:AddSlider("RagebotFOVRadius", {
+	Text = "FOV Radius",
+	Default = 360, Min = 30, Max = 1200, Rounding = 0, Compact = true,
+	Callback = function(value) RagebotFOV = value end
+})
+
+RageBox:AddDropdown("RagebotPart", {
+	Values = {"Head", "HumanoidRootPart", "UpperTorso"},
+	Default = "Head", Text = "Target Part",
+	Callback = function(value) RagebotPart = value end
+})
+
+RageBox:AddDropdown("RagebotPriority", {
+	Values = {"Closest", "FOV"},
+	Default = "Closest", Text = "Target Priority",
+	Callback = function(value) RagebotPriority = value end
+})
+
+RageBox:AddToggle("RagebotWallCheck", {
+	Text = "Visibility Check",
+	Default = false,
+	Callback = function(value) RagebotWallCheck = value end
+})
+
+RageBox:AddToggle("RagebotSwitching", {
+	Text = "Instant Target Switching",
+	Default = true,
+	Callback = function(value) RagebotSwitching = value end
+})
+
+RageBox:AddSlider("RagebotMaxDistance", {
+	Text = "Max Distance",
+	Default = 2000, Min = 50, Max = 5000, Rounding = 0, Compact = true,
+	Callback = function(value) RagebotMaxDistance = value end
+})
+
+RageBox:AddLabel("Key: hold the Ragebot key to activate")
+RageBox:AddLabel("Local target lock only; no remote/network hooks.")
+RageBox:AddLabel("Rage target: none")
+
+local rageKeyLabel = RageBox:AddLabel("Ragebot Key"):AddKeyPicker("RagebotKey", {
+	Default = "LeftAlt", Text = "Ragebot activation", NoUI = false
+})
+
+-- ============================================================
+
+local AimBox = AimTab:AddRightGroupbox("Aimbot / Target Assist")
+
+AimBox:AddToggle("Aimbot", {
+	Text = "Aimbot",
+	Default = false,
+	Callback = function(value)
+		AimbotEnabled = value
+		if not value then
+			CurrentAimTarget = nil
+		end
+	end,
+})
+
+AimBox:AddToggle("AimbotFOV", {
+	Text = "FOV Detection",
+	Default = true,
+	Callback = function(value)
+		AimbotFOVEnabled = value
+	end,
+})
+
+AimBox:AddToggle("AimbotWallCheck", {
+	Text = "Wall Check",
+	Default = false,
+	Callback = function(value)
+		AimbotWallCheck = value
+	end,
+})
+
+AimBox:AddToggle("AimbotSwitching", {
+	Text = "Target Switching",
+	Default = true,
+	Callback = function(value)
+		AimbotSwitching = value
+	end,
+})
+
+AimBox:AddSlider("AimbotFOVRadius", {
+	Text = "FOV Radius",
+	Default = 200,
+	Min = 25,
+	Max = 500,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		AimbotFOV = value
+		SilentAimFOV = value
+	end,
+})
+
+AimBox:AddSlider("AimbotSmoothness", {
+	Text = "Smoothness",
+	Default = 0.20,
+	Min = 0.02,
+	Max = 1,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		AimbotSmoothness = value
+	end,
+})
+
+AimBox:AddDropdown("AimPart", {
+	Values = {"HumanoidRootPart", "Head", "UpperTorso", "Torso"},
+	Default = "HumanoidRootPart",
+	Multi = false,
+	Text = "Target Part",
+	Callback = function(value)
+		_G.PrivateProjectAimPart = value
+	end,
+})
+
+AimBox:AddSlider("MaxTargetDistance", {
+	Text = "Max Target Distance",
+	Default = 1000,
+	Min = 25,
+	Max = 3000,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		_G.PrivateProjectMaxTargetDistance = value
+	end,
+})
+
+AimBox:AddToggle("ShowTargetMarker", {
+	Text = "Target Marker",
+	Default = true,
+	Callback = function(value)
+		_G.PrivateProjectShowTargetMarker = value
+	end,
+})
+
+AimBox:AddToggle("SilentAim", {
+	Text = "Silent Aim Target Selector",
+	Default = false,
+	Callback = function(value)
+		SilentAimEnabled = value
+		if not value then
+			SilentAimTarget = nil
+		end
+	end,
+})
+
+local AimStatus = AimBox:AddLabel("Aimbot target: none")
+local SilentStatus = AimBox:AddLabel("Silent target: none")
+
+local FOVGui = Instance.new("ScreenGui")
+FOVGui.Name = "PrivateProjectFOV"
+FOVGui.IgnoreGuiInset = true
+FOVGui.ResetOnSpawn = false
+FOVGui.DisplayOrder = 35
+FOVGui.Parent = PlayerGui
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+FOVCircle.Size = UDim2.fromOffset(AimbotFOV * 2, AimbotFOV * 2)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Visible = false
+FOVCircle.Parent = FOVGui
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1, 0)
+FOVCorner.Parent = FOVCircle
+
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Thickness = 1
+FOVStroke.Transparency = 0.15
+FOVStroke.Parent = FOVCircle
+
+local AimKeyState = false
+local AimKeyLabel = AimBox:AddLabel("Camera Test Aim Key"):AddKeyPicker("AimbotKey", {
+	Default = "Q",
+	Mode = "Hold",
+	Text = "Camera target assist",
+	Callback = function(value)
+		AimKeyState = value
+	end,
+})
+
+local SilentKeyState = false
+AimBox:AddLabel("Target Selector Key"):AddKeyPicker("TargetSelectorKey", {
+	Default = "None",
+	Mode = "Hold",
+	Text = "Target selector",
+	Callback = function(value)
+		SilentKeyState = value
+	end,
+})
+
+local TargetMarkerGui = Instance.new("ScreenGui")
+TargetMarkerGui.Name = "PrivateProjectTargetMarker"
+TargetMarkerGui.IgnoreGuiInset = true
+TargetMarkerGui.ResetOnSpawn = false
+TargetMarkerGui.DisplayOrder = 42
+TargetMarkerGui.Parent = PlayerGui
+
+local TargetMarker = Instance.new("Frame")
+TargetMarker.AnchorPoint = Vector2.new(0.5, 0.5)
+TargetMarker.Size = UDim2.fromOffset(14, 14)
+TargetMarker.BackgroundTransparency = 1
+TargetMarker.Visible = false
+TargetMarker.Parent = TargetMarkerGui
+
+local markerCorner = Instance.new("UICorner")
+markerCorner.CornerRadius = UDim.new(1, 0)
+markerCorner.Parent = TargetMarker
+
+local markerStroke = Instance.new("UIStroke")
+markerStroke.Thickness = 2
+markerStroke.Parent = TargetMarker
+
+RunService:BindToRenderStep(
+	"PrivateProjectAim",
+	Enum.RenderPriority.Camera.Value + 1,
+	function(deltaTime)
+		camera = Workspace.CurrentCamera
+
+		if RagebotEnabled and Options.RagebotKey and Options.RagebotKey:GetState() then
+			if RagebotSwitching or not isRageValid(RagebotTarget) then
+				RagebotTarget = chooseRageTarget()
+			end
+
+			if RagebotTarget then
+				rageSnap(RagebotTarget)
+			end
+		else
+			RagebotTarget = nil
+		end
+
+		local effectiveFOV = AimbotFOVEnabled and AimbotFOV or math.huge
+
+		FOVCircle.Visible = AimbotEnabled and AimbotFOVEnabled
+		FOVCircle.Size = UDim2.fromOffset(AimbotFOV * 2, AimbotFOV * 2)
+
+		if AimbotEnabled and (Options.AimbotKey and Options.AimbotKey:GetState()) then
+			if not AimbotSwitching and isValidAimTarget(CurrentAimTarget) then
+				-- Keep the current target.
+			else
+				CurrentAimTarget = findClosestTarget(effectiveFOV)
+			end
+
+			if CurrentAimTarget then
+				aimAtTarget(CurrentAimTarget, deltaTime)
+			end
+		elseif not AimbotEnabled then
+			CurrentAimTarget = nil
+		end
+
+		if SilentAimEnabled and (Options.TargetSelectorKey and Options.TargetSelectorKey:GetState()) then
+			SilentAimTarget = findClosestTarget(SilentAimFOV)
+		elseif not SilentAimEnabled then
+			SilentAimTarget = nil
+		end
+
+		local markerTarget = SilentAimTarget or CurrentAimTarget
+		if markerTarget and (_G.PrivateProjectShowTargetMarker ~= false) then
+			local markerPart = getAimPart(markerTarget)
+			if markerPart then
+				local point, visible = camera:WorldToViewportPoint(markerPart.Position)
+				TargetMarker.Visible = visible and point.Z > 0
+				TargetMarker.Position = UDim2.fromOffset(point.X, point.Y)
+			else
+				TargetMarker.Visible = false
+			end
+		else
+			TargetMarker.Visible = false
+		end
+
+		AimStatus:SetText(
+			"Aimbot target: " ..
+			(CurrentAimTarget and CurrentAimTarget.Name or "none")
+		)
+
+		SilentStatus:SetText(
+			"Silent target: " ..
+			(SilentAimTarget and SilentAimTarget.Name or "none")
+		)
+	end
+)
+
+local CrosshairGui = Instance.new("ScreenGui")
+CrosshairGui.Name = "PrivateTestCrosshair"
+CrosshairGui.IgnoreGuiInset = true
+CrosshairGui.ResetOnSpawn = false
+CrosshairGui.DisplayOrder = 40
+CrosshairGui.Parent = PlayerGui
+
+Crosshair = Instance.new("TextLabel")
+Crosshair.BackgroundTransparency = 1
+Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+Crosshair.Position = UDim2.fromScale(0.5, 0.5)
+Crosshair.Size = UDim2.fromOffset(40, 40)
+Crosshair.Text = "+"
+Crosshair.TextColor3 = Color3.fromRGB(255, 255, 255)
+Crosshair.TextStrokeTransparency = 0.25
+Crosshair.Font = Enum.Font.GothamBold
+Crosshair.TextSize = 22
+Crosshair.Parent = CrosshairGui
+
+-- ============================================================
+-- VISUALS - MEGA PACK
+-- ============================================================
+
+VisualsTab = Window:AddTab("Visuals", "cloud-rain")
+
+local VisualStatusBox = VisualsTab:AddLeftGroupbox("Visuals Status")
+VisualStatusBox:AddLabel(
+	"PRIVATE VISUALS\n\n" ..
+	"If you can see this box, the Visuals tab loaded correctly.\n" ..
+	"Use the groups below for weather, post-processing and camera effects.",
+	true
+)
+
+VisualStatusBox:AddButton({
+	Text = "Test Visuals",
+	Func = function()
+		Library:Notify({
+			Title = "Visuals",
+			Description = "Visuals tab is working.",
+			Time = 2
+		})
+	end
+})
+
+VisualStatusBox:AddButton({
+	Text = "Force Weather Test",
+	Func = function()
+		if RainGui then RainGui.Enabled = true end
+		if SnowGui then SnowGui.Enabled = true end
+		for _, drop in ipairs(rainDrops) do drop.Visible = true end
+		for _, flake in ipairs(snowflakes) do flake.Visible = true end
+
+		Library:Notify({
+			Title = "Weather Test",
+			Description = "Rain and snow overlays forced on.",
+			Time = 2
+		})
+	end
+})
+
+local visualsEnabled = true
+local rainEnabled = false
+local snowEnabled = false
+local fogEnabled = false
+local bloomEnabled = false
+local nightEnabled = false
+local colorBoostEnabled = false
+local sunEnabled = false
+local dofEnabled = false
+local vignetteEnabled = false
+local lightningEnabled = false
+local blurEnabled = false
+local colorCycleEnabled = false
+local bloomPulseEnabled = false
+local cameraSwayEnabled = false
+local filmGrainEnabled = false
+
+local RNG = Random.new()
+
+local rainSpeed = 1.15
+local rainWind = 0.08
+local snowSpeed = 0.12
+local snowWind = 0.015
+local lightningDelayMin = 5
+local lightningDelayMax = 12
+local rainOpacity = 0.35
+local snowOpacity = 0.35
+
+local originalLighting = {
+	Brightness = Lighting.Brightness,
+	ClockTime = Lighting.ClockTime,
+	FogStart = Lighting.FogStart,
+	FogEnd = Lighting.FogEnd,
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	ExposureCompensation = Lighting.ExposureCompensation,
+	GlobalShadows = Lighting.GlobalShadows,
+}
+
+local originalCameraFOV = camera and camera.FieldOfView or 70
+
+local function getOrCreateEffect(className, name)
+	className = clean(className)
+	name = clean(name)
+
+	local effect = Lighting:FindFirstChild(name)
+	if effect and effect:IsA(className) then
+		return effect
+	end
+
+	if effect then effect:Destroy() end
+
+	effect = Instance.new(className)
+	effect.Name = name
+	effect.Parent = Lighting
+	return effect
+end
+
+local bloom = getOrCreateEffect("BloomEffect", "PrivateTestBloom")
+local colorCorrection = getOrCreateEffect("ColorCorrectionEffect", "PrivateTestColor")
+local atmosphere = getOrCreateEffect("Atmosphere", "PrivateTestAtmosphere")
+local sunRays = getOrCreateEffect("SunRaysEffect", "PrivateTestSunRays")
+local depthOfField = getOrCreateEffect("DepthOfFieldEffect", "PrivateTestDOF")
+local blur = getOrCreateEffect("BlurEffect", "PrivateTestBlur")
+
+bloom.Intensity = 0
+bloom.Size = 24
+bloom.Threshold = 1
+
+colorCorrection.Brightness = 0
+colorCorrection.Contrast = 0
+colorCorrection.Saturation = 0
+colorCorrection.TintColor = Color3.new(1, 1, 1)
+
+atmosphere.Density = 0
+atmosphere.Haze = 0
+atmosphere.Glare = 0
+atmosphere.Offset = 0
+
+sunRays.Intensity = 0
+sunRays.Spread = 0.75
+
+depthOfField.FarIntensity = 0
+depthOfField.NearIntensity = 0
+depthOfField.FocusDistance = 25
+depthOfField.InFocusRadius = 40
+
+blur.Size = 0
+
+local VisualOverlay = Instance.new("ScreenGui")
+VisualOverlay.Name = "PrivateProjectVisualOverlay"
+VisualOverlay.IgnoreGuiInset = true
+VisualOverlay.ResetOnSpawn = false
+VisualOverlay.DisplayOrder = 45
+VisualOverlay.Parent = PlayerGui
+
+local Vignette = Instance.new("Frame")
+Vignette.BackgroundTransparency = 1
+Vignette.Size = UDim2.fromScale(1, 1)
+Vignette.Parent = VisualOverlay
+
+local VignetteStroke = Instance.new("UIStroke")
+VignetteStroke.Thickness = 22
+VignetteStroke.Transparency = 1
+VignetteStroke.Parent = Vignette
+
+local FilmGrain = Instance.new("TextLabel")
+FilmGrain.BackgroundTransparency = 1
+FilmGrain.Size = UDim2.fromScale(1, 1)
+FilmGrain.Text = "·  ·   ·    ·  ·   ·    ·   ·"
+FilmGrain.TextColor3 = Color3.fromRGB(255, 255, 255)
+FilmGrain.TextTransparency = 1
+FilmGrain.TextScaled = true
+FilmGrain.Font = Enum.Font.Code
+FilmGrain.Parent = VisualOverlay
+
+local LightningFlash = Instance.new("Frame")
+LightningFlash.BackgroundColor3 = Color3.fromRGB(225, 240, 255)
+LightningFlash.BackgroundTransparency = 1
+LightningFlash.Size = UDim2.fromScale(1, 1)
+LightningFlash.Parent = VisualOverlay
+
+SnowGui = Instance.new("ScreenGui")
+SnowGui.Name = "PrivateProjectSnow"
+SnowGui.IgnoreGuiInset = true
+SnowGui.ResetOnSpawn = false
+SnowGui.DisplayOrder = 99
+SnowGui.Enabled = false
+SnowGui.Parent = PlayerGui
+
+snowflakes = {}
+for i = 1, 75 do
+	local flake = Instance.new("TextLabel")
+	flake.BackgroundTransparency = 1
+	flake.Text = "•"
+	flake.TextSize = RNG:NextInteger(8, 18)
+	flake.TextColor3 = Color3.fromRGB(235, 245, 255)
+	flake.TextTransparency = RNG:NextNumber(math.max(0.05, snowOpacity - 0.2), math.min(0.85, snowOpacity + 0.2))
+	flake.Size = UDim2.fromOffset(20, 20)
+	flake.Position = UDim2.fromScale(RNG:NextNumber(0, 1), RNG:NextNumber(-0.1, 1))
+	flake.Parent = SnowGui
+	table.insert(snowflakes, flake)
+end
+
+RainGui = Instance.new("ScreenGui")
+RainGui.Name = "PrivateTestRainOverlay"
+RainGui.IgnoreGuiInset = true
+RainGui.ResetOnSpawn = false
+RainGui.DisplayOrder = 100
+RainGui.Enabled = false
+RainGui.Parent = PlayerGui
+
+rainDrops = {}
+for i = 1, 120 do
+	local drop = Instance.new("Frame")
+	drop.Name = "RainDrop"
+	drop.AnchorPoint = Vector2.new(0.5, 0)
+	drop.BorderSizePixel = 0
+	drop.BackgroundColor3 = Color3.fromRGB(190, 220, 255)
+	drop.BackgroundTransparency = RNG:NextNumber(math.max(0.05, rainOpacity - 0.2), math.min(0.85, rainOpacity + 0.2))
+	drop.Size = UDim2.fromOffset(RNG:NextInteger(1, 2), RNG:NextInteger(10, 24))
+	drop.Position = UDim2.fromScale(RNG:NextNumber(-0.05, 1.05), RNG:NextNumber(-0.2, 1))
+	drop.Rotation = RNG:NextInteger(8, 14)
+	drop.Visible = false
+	drop.Parent = RainGui
+	table.insert(rainDrops, drop)
+end
+
+local function setRain(enabled)
+	RainGui.Enabled = enabled and visualsEnabled
+	for _, drop in ipairs(rainDrops) do
+		drop.Visible = RainGui.Enabled
+	end
+end
+
+local function setNight(enabled)
+	if enabled and visualsEnabled then
+		Lighting.ClockTime = 0
+		Lighting.Brightness = 1.2
+		Lighting.Ambient = Color3.fromRGB(35, 45, 80)
+		Lighting.OutdoorAmbient = Color3.fromRGB(20, 25, 55)
+	else
+		Lighting.ClockTime = originalLighting.ClockTime
+		Lighting.Brightness = originalLighting.Brightness
+		Lighting.Ambient = originalLighting.Ambient
+		Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+	end
+end
+
+local function applyColorPreset(name)
+	name = clean(name)
+
+	if name == "Normal" then
+		colorCorrection.Brightness = 0
+		colorCorrection.Contrast = 0
+		colorCorrection.Saturation = 0
+		colorCorrection.TintColor = Color3.new(1, 1, 1)
+	elseif name == "Cinematic" then
+		colorCorrection.Brightness = -0.02
+		colorCorrection.Contrast = 0.22
+		colorCorrection.Saturation = -0.08
+		colorCorrection.TintColor = Color3.fromRGB(235, 240, 255)
+	elseif name == "Cold" then
+		colorCorrection.Brightness = 0
+		colorCorrection.Contrast = 0.12
+		colorCorrection.Saturation = 0.05
+		colorCorrection.TintColor = Color3.fromRGB(190, 220, 255)
+	elseif name == "Warm" then
+		colorCorrection.Brightness = 0.02
+		colorCorrection.Contrast = 0.08
+		colorCorrection.Saturation = 0.18
+		colorCorrection.TintColor = Color3.fromRGB(255, 225, 190)
+	elseif name == "Neon" then
+		colorCorrection.Brightness = 0.03
+		colorCorrection.Contrast = 0.25
+		colorCorrection.Saturation = 0.45
+		colorCorrection.TintColor = Color3.fromRGB(220, 255, 240)
+	end
+end
+
+local function flashLightning()
+	if not lightningEnabled or not visualsEnabled then return end
+
+	LightningFlash.BackgroundTransparency = 0.72
+	task.delay(0.05, function()
+		if LightningFlash then LightningFlash.BackgroundTransparency = 1 end
+	end)
+
+	task.delay(0.12, function()
+		if LightningFlash and lightningEnabled and visualsEnabled then
+			LightningFlash.BackgroundTransparency = 0.88
+			task.delay(0.07, function()
+				if LightningFlash then LightningFlash.BackgroundTransparency = 1 end
+			end)
+		end
+	end)
+end
+
+task.spawn(function()
+	while not Library.Unloaded do
+		if lightningEnabled and visualsEnabled then
+			task.wait(RNG:NextNumber(lightningDelayMin, lightningDelayMax))
+			flashLightning()
+		else
+			task.wait(1)
+		end
+	end
+end)
+
+local function forceDisableVisualState()
+	if RainGui then RainGui.Enabled = false end
+	if SnowGui then SnowGui.Enabled = false end
+	if bloom then bloom.Intensity = 0 end
+	if sunRays then sunRays.Intensity = 0 end
+	if depthOfField then depthOfField.FarIntensity = 0; depthOfField.NearIntensity = 0 end
+	if blur then blur.Size = 0 end
+	if atmosphere then atmosphere.Density = 0; atmosphere.Haze = 0; atmosphere.Glare = 0 end
+	if VignetteStroke then VignetteStroke.Transparency = 1 end
+	if FilmGrain then FilmGrain.TextTransparency = 1 end
+	if LightningFlash then LightningFlash.BackgroundTransparency = 1 end
+end
+
+local visualsBox = VisualsTab:AddLeftGroupbox("Atmosphere & Weather")
+
+visualsBox:AddToggle("VisualsEnabled", {
+	Text = "Visual Effects",
+	Default = true,
+	Callback = function(value)
+		visualsEnabled = value
+		setRain(rainEnabled)
+
+		bloom.Intensity = (value and bloomEnabled) and 1.15 or 0
+		atmosphere.Density = (value and fogEnabled) and 0.32 or 0
+		atmosphere.Haze = (value and fogEnabled) and 1.2 or 0
+		sunRays.Intensity = (value and sunEnabled) and 0.12 or 0
+		depthOfField.FarIntensity = (value and dofEnabled) and 0.18 or 0
+		depthOfField.NearIntensity = (value and dofEnabled) and 0.08 or 0
+		blur.Size = (value and blurEnabled) and 6 or 0
+		VignetteStroke.Transparency = (value and vignetteEnabled) and 0.15 or 1
+		SnowGui.Enabled = snowEnabled and value
+		FilmGrain.TextTransparency = (value and filmGrainEnabled) and 0.86 or 1
+
+		if value then
+			if nightEnabled then setNight(true) end
+		else
+			setNight(false)
+			colorCorrection.Brightness = 0
+			colorCorrection.Contrast = 0
+			colorCorrection.Saturation = 0
+			colorCorrection.TintColor = Color3.new(1, 1, 1)
+			camera.FieldOfView = originalCameraFOV
+			forceDisableVisualState()
+		end
+	end
+})
+
+visualsBox:AddToggle("Rain", {
+	Text = "Rain",
+	Default = false,
+	Callback = function(value)
+		rainEnabled = value
+		setRain(value)
+		if not value then
+			for _, drop in ipairs(rainDrops) do drop.Visible = false end
+		end
+	end
+})
+
+visualsBox:AddToggle("Snow", {
+	Text = "Snow",
+	Default = false,
+	Callback = function(value)
+		snowEnabled = value
+		SnowGui.Enabled = value and visualsEnabled
+		if not value then
+			for _, flake in ipairs(snowflakes) do flake.Visible = false end
+		end
+	end
+})
+
+visualsBox:AddToggle("Fog", {
+	Text = "Fog / Haze",
+	Default = false,
+	Callback = function(value)
+		fogEnabled = value
+		atmosphere.Density = (value and visualsEnabled) and 0.32 or 0
+		atmosphere.Haze = (value and visualsEnabled) and 1.2 or 0
+	end
+})
+
+visualsBox:AddToggle("NightMode", {
+	Text = "Night Mode",
+	Default = false,
+	Callback = function(value)
+		nightEnabled = value
+		setNight(value)
+	end
+})
+
+visualsBox:AddToggle("Lightning", {
+	Text = "Random Lightning",
+	Default = false,
+	Callback = function(value)
+		lightningEnabled = value
+	end
+})
+
+local weatherBox = VisualsTab:AddLeftGroupbox("Weather Controls")
+
+weatherBox:AddSlider("RainSpeed", {
+	Text = "Rain Speed",
+	Default = 1.15,
+	Min = 0.1,
+	Max = 3,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		rainSpeed = value
+	end
+})
+
+weatherBox:AddSlider("RainWind", {
+	Text = "Rain Wind",
+	Default = 0.08,
+	Min = -0.5,
+	Max = 0.5,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		rainWind = value
+	end
+})
+
+weatherBox:AddSlider("RainOpacity", {
+	Text = "Rain Opacity",
+	Default = 0.35,
+	Min = 0.05,
+	Max = 0.8,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		rainOpacity = value
+		for _, drop in ipairs(rainDrops) do
+			drop.BackgroundTransparency = math.clamp(value + RNG:NextNumber(-0.2, 0.2), 0.05, 0.9)
+		end
+	end
+})
+
+weatherBox:AddSlider("SnowSpeed", {
+	Text = "Snow Speed",
+	Default = 0.12,
+	Min = 0.02,
+	Max = 0.8,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		snowSpeed = value
+	end
+})
+
+weatherBox:AddSlider("SnowWind", {
+	Text = "Snow Wind",
+	Default = 0.015,
+	Min = -0.15,
+	Max = 0.15,
+	Rounding = 3,
+	Compact = true,
+	Callback = function(value)
+		snowWind = value
+	end
+})
+
+weatherBox:AddSlider("SnowOpacity", {
+	Text = "Snow Opacity",
+	Default = 0.35,
+	Min = 0.05,
+	Max = 0.8,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		snowOpacity = value
+		for _, flake in ipairs(snowflakes) do
+			flake.TextTransparency = math.clamp(value + RNG:NextNumber(-0.2, 0.2), 0.05, 0.9)
+		end
+	end
+})
+
+weatherBox:AddSlider("LightningMin", {
+	Text = "Lightning Min Delay",
+	Default = 5,
+	Min = 1,
+	Max = 30,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		lightningDelayMin = value
+		if lightningDelayMax < value then lightningDelayMax = value end
+	end
+})
+
+weatherBox:AddSlider("LightningMax", {
+	Text = "Lightning Max Delay",
+	Default = 12,
+	Min = 1,
+	Max = 60,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		lightningDelayMax = math.max(value, lightningDelayMin)
+	end
+})
+
+weatherBox:AddButton({
+	Text = "Rain + Storm Test",
+	Func = function()
+		if Options.VisualsEnabled then Options.VisualsEnabled:SetValue(true) end
+		if Options.Rain then Options.Rain:SetValue(true) end
+		if Options.Fog then Options.Fog:SetValue(true) end
+		if Options.Lightning then Options.Lightning:SetValue(true) end
+	end
+})
+
+weatherBox:AddButton({
+	Text = "Snow Test",
+	Func = function()
+		if Options.VisualsEnabled then Options.VisualsEnabled:SetValue(true) end
+		if Options.Snow then Options.Snow:SetValue(true) end
+	end
+})
+
+local gradeBox = VisualsTab:AddLeftGroupbox("Color & Lighting")
+
+gradeBox:AddDropdown("ColorPreset", {
+	Values = {"Normal", "Cinematic", "Cold", "Warm", "Neon"},
+	Default = "Normal",
+	Multi = false,
+	Text = "Color Preset",
+	Callback = function(value)
+		if visualsEnabled then
+			applyColorPreset(value)
+		end
+	end
+})
+
+gradeBox:AddSlider("Brightness", {
+	Text = "Brightness",
+	Default = 0,
+	Min = -0.25,
+	Max = 0.25,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		if visualsEnabled then colorCorrection.Brightness = value end
+	end
+})
+
+gradeBox:AddSlider("Contrast", {
+	Text = "Contrast",
+	Default = 0,
+	Min = -0.5,
+	Max = 0.5,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		if visualsEnabled then colorCorrection.Contrast = value end
+	end
+})
+
+gradeBox:AddSlider("Saturation", {
+	Text = "Saturation",
+	Default = 0,
+	Min = -1,
+	Max = 1,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		if visualsEnabled then colorCorrection.Saturation = value end
+	end
+})
+
+gradeBox:AddSlider("Exposure", {
+	Text = "Exposure",
+	Default = 0,
+	Min = -2,
+	Max = 2,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		Lighting.ExposureCompensation = value
+	end
+})
+
+gradeBox:AddSlider("CameraFOV", {
+	Text = "Camera FOV",
+	Default = math.floor(originalCameraFOV),
+	Min = 50,
+	Max = 110,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		if visualsEnabled then camera.FieldOfView = value end
+	end
+})
+
+gradeBox:AddToggle("ColorBoost", {
+	Text = "Color Boost",
+	Default = false,
+	Callback = function(value)
+		colorBoostEnabled = value
+		if value and visualsEnabled then
+			colorCorrection.Contrast = 0.15
+			colorCorrection.Saturation = 0.25
+			colorCorrection.Brightness = 0.02
+		elseif not value then
+			colorCorrection.Brightness = 0
+			colorCorrection.Contrast = 0
+			colorCorrection.Saturation = 0
+		end
+	end
+})
+
+local fxBox = VisualsTab:AddRightGroupbox("Post Processing")
+
+fxBox:AddSlider("AtmosphereDensity", {
+	Text = "Atmosphere Density",
+	Default = 0.32,
+	Min = 0,
+	Max = 1,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		if fogEnabled and visualsEnabled then atmosphere.Density = value end
+	end
+})
+
+fxBox:AddSlider("AtmosphereHaze", {
+	Text = "Atmosphere Haze",
+	Default = 1.2,
+	Min = 0,
+	Max = 3,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		if fogEnabled and visualsEnabled then atmosphere.Haze = value end
+	end
+})
+
+fxBox:AddSlider("BloomThreshold", {
+	Text = "Bloom Threshold",
+	Default = 1,
+	Min = 0,
+	Max = 3,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		bloom.Threshold = value
+	end
+})
+
+fxBox:AddToggle("Bloom", {
+	Text = "Bloom",
+	Default = false,
+	Callback = function(value)
+		bloomEnabled = value
+		bloom.Intensity = (value and visualsEnabled) and 1.15 or 0
+	end
+})
+
+fxBox:AddSlider("BloomIntensity", {
+	Text = "Bloom Intensity",
+	Default = 1.15,
+	Min = 0,
+	Max = 3,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		bloom.Intensity = (bloomEnabled and visualsEnabled) and value or 0
+	end
+})
+
+fxBox:AddToggle("SunRays", {
+	Text = "Sun Rays",
+	Default = false,
+	Callback = function(value)
+		sunEnabled = value
+		sunRays.Intensity = (value and visualsEnabled) and 0.12 or 0
+	end
+})
+
+fxBox:AddSlider("SunRayIntensity", {
+	Text = "Sun Ray Intensity",
+	Default = 0.12,
+	Min = 0,
+	Max = 0.5,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		sunRays.Intensity = (sunEnabled and visualsEnabled) and value or 0
+	end
+})
+
+fxBox:AddToggle("DepthOfField", {
+	Text = "Depth Of Field",
+	Default = false,
+	Callback = function(value)
+		dofEnabled = value
+		depthOfField.FarIntensity = (value and visualsEnabled) and 0.18 or 0
+		depthOfField.NearIntensity = (value and visualsEnabled) and 0.08 or 0
+	end
+})
+
+fxBox:AddSlider("DOFFocus", {
+	Text = "DOF Focus Distance",
+	Default = 25,
+	Min = 5,
+	Max = 100,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		depthOfField.FocusDistance = value
+	end
+})
+
+fxBox:AddToggle("Blur", {
+	Text = "Screen Blur",
+	Default = false,
+	Callback = function(value)
+		blurEnabled = value
+		blur.Size = (value and visualsEnabled) and 6 or 0
+	end
+})
+
+fxBox:AddSlider("BlurSize", {
+	Text = "Blur Size",
+	Default = 6,
+	Min = 0,
+	Max = 24,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		blur.Size = (blurEnabled and visualsEnabled) and value or 0
+	end
+})
+
+local cinematicBox = VisualsTab:AddRightGroupbox("Cinematic Extras")
+
+cinematicBox:AddToggle("Vignette", {
+	Text = "Vignette",
+	Default = false,
+	Callback = function(value)
+		vignetteEnabled = value
+		VignetteStroke.Transparency = (value and visualsEnabled) and 0.15 or 1
+	end
+})
+
+cinematicBox:AddToggle("FilmGrain", {
+	Text = "Film Grain",
+	Default = false,
+	Callback = function(value)
+		filmGrainEnabled = value
+		FilmGrain.TextTransparency = (value and visualsEnabled) and 0.86 or 1
+	end
+})
+
+cinematicBox:AddToggle("ColorCycle", {
+	Text = "Animated Color Cycle",
+	Default = false,
+	Callback = function(value)
+		colorCycleEnabled = value
+	end
+})
+
+cinematicBox:AddToggle("BloomPulse", {
+	Text = "Animated Bloom Pulse",
+	Default = false,
+	Callback = function(value)
+		bloomPulseEnabled = value
+	end
+})
+
+cinematicBox:AddToggle("CameraSway", {
+	Text = "Subtle Camera Sway",
+	Default = false,
+	Callback = function(value)
+		cameraSwayEnabled = value
+	end
+})
+
+cinematicBox:AddButton({
+	Text = "Cinematic Preset",
+	Func = function()
+		if Options.VisualsEnabled then Options.VisualsEnabled:SetValue(true) end
+		if Options.ColorPreset then Options.ColorPreset:SetValue("Cinematic") end
+		if Options.Bloom then Options.Bloom:SetValue(true) end
+		if Options.SunRays then Options.SunRays:SetValue(true) end
+		if Options.Vignette then Options.Vignette:SetValue(true) end
+		if Options.DepthOfField then Options.DepthOfField:SetValue(true) end
+		if Options.FilmGrain then Options.FilmGrain:SetValue(true) end
+	end
+})
+
+cinematicBox:AddButton({
+	Text = "Storm Preset",
+	Func = function()
+		if Options.VisualsEnabled then Options.VisualsEnabled:SetValue(true) end
+		if Options.Rain then Options.Rain:SetValue(true) end
+		if Options.Fog then Options.Fog:SetValue(true) end
+		if Options.Lightning then Options.Lightning:SetValue(true) end
+		if Options.ColorPreset then Options.ColorPreset:SetValue("Cold") end
+	end
+})
+
+local extraBox = VisualsTab:AddRightGroupbox("Extra Visuals")
+
+extraBox:AddSlider("ClockTime", {
+	Text = "Time Of Day",
+	Default = originalLighting.ClockTime,
+	Min = 0,
+	Max = 24,
+	Rounding = 1,
+	Compact = true,
+	Callback = function(value)
+		if visualsEnabled and not nightEnabled then
+			Lighting.ClockTime = value
+		end
+	end
+})
+
+extraBox:AddToggle("AtmosphereGlare", {
+	Text = "Atmosphere Glare",
+	Default = false,
+	Callback = function(value)
+		atmosphere.Glare = (value and visualsEnabled) and 0.25 or 0
+	end
+})
+
+extraBox:AddToggle("AtmosphereColorTint", {
+	Text = "Atmosphere Tint",
+	Default = false,
+	Callback = function(value)
+		if value and visualsEnabled then
+			atmosphere.Color = Color3.fromRGB(180, 205, 255)
+			atmosphere.Decay = Color3.fromRGB(255, 220, 180)
+		else
+			atmosphere.Color = Color3.fromRGB(199, 199, 199)
+			atmosphere.Decay = Color3.fromRGB(106, 112, 125)
+		end
+	end
+})
+
+extraBox:AddToggle("FullBrightTest", {
+	Text = "Full Bright",
+	Default = false,
+	Callback = function(value)
+		if value and visualsEnabled then
+			Lighting.Brightness = 3
+			Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+			Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+		else
+			Lighting.Brightness = originalLighting.Brightness
+			Lighting.Ambient = originalLighting.Ambient
+			Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+		end
+	end
+})
+
+extraBox:AddToggle("GlobalShadowsTest", {
+	Text = "Global Shadows",
+	Default = originalLighting.GlobalShadows,
+	Callback = function(value)
+		Lighting.GlobalShadows = value
+	end
+})
+
+extraBox:AddSlider("FogStart", {
+	Text = "Fog Start",
+	Default = originalLighting.FogStart,
+	Min = 0,
+	Max = 2000,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		Lighting.FogStart = value
+	end
+})
+
+extraBox:AddSlider("FogEnd", {
+	Text = "Fog End",
+	Default = originalLighting.FogEnd,
+	Min = 50,
+	Max = 5000,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		Lighting.FogEnd = value
+	end
+})
+
+extraBox:AddLabel("Ambient Color"):AddColorPicker("AmbientColor", {
+	Default = originalLighting.Ambient,
+	Title = "Ambient Color",
+	Callback = function(value)
+		if visualsEnabled then
+			Lighting.Ambient = value
+		end
+	end
+})
+
+local function resetVisuals()
+	rainEnabled = false
+	snowEnabled = false
+	fogEnabled = false
+	bloomEnabled = false
+	nightEnabled = false
+	colorBoostEnabled = false
+	sunEnabled = false
+	dofEnabled = false
+	vignetteEnabled = false
+	lightningEnabled = false
+	blurEnabled = false
+	colorCycleEnabled = false
+	bloomPulseEnabled = false
+	cameraSwayEnabled = false
+	filmGrainEnabled = false
+
+	setRain(false)
+
+	SnowGui.Enabled = false
+	bloom.Intensity = 0
+	atmosphere.Density = 0
+	atmosphere.Haze = 0
+	sunRays.Intensity = 0
+	depthOfField.FarIntensity = 0
+	depthOfField.NearIntensity = 0
+	blur.Size = 0
+
+	colorCorrection.Brightness = 0
+	colorCorrection.Contrast = 0
+	colorCorrection.Saturation = 0
+	colorCorrection.TintColor = Color3.new(1, 1, 1)
+
+	Lighting.ExposureCompensation = originalLighting.ExposureCompensation
+	Lighting.Brightness = originalLighting.Brightness
+	Lighting.ClockTime = originalLighting.ClockTime
+	Lighting.Ambient = originalLighting.Ambient
+	Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+	Lighting.FogStart = originalLighting.FogStart
+	Lighting.FogEnd = originalLighting.FogEnd
+	Lighting.GlobalShadows = originalLighting.GlobalShadows
+
+	camera.FieldOfView = originalCameraFOV
+
+	VignetteStroke.Transparency = 1
+	FilmGrain.TextTransparency = 1
+	LightningFlash.BackgroundTransparency = 1
+
+	local names = {
+		"VisualsEnabled", "Rain", "Snow", "Fog", "NightMode", "Lightning",
+		"ColorBoost", "Bloom", "SunRays", "DepthOfField", "Blur",
+		"Vignette", "FilmGrain", "ColorCycle", "BloomPulse", "CameraSway"
+	}
+
+	for _, name in ipairs(names) do
+		if Options[name] then
+			pcall(function() Options[name]:SetValue(false) end)
+		end
+	end
+
+	if Options.VisualsEnabled then
+		pcall(function() Options.VisualsEnabled:SetValue(true) end)
+	end
+
+	if Options.ColorPreset then
+		pcall(function() Options.ColorPreset:SetValue("Normal") end)
+	end
+end
+
+visualsBox:AddButton({
+	Text = "Reset All Visuals",
+	Func = resetVisuals,
+})
+
+RunService.RenderStepped:Connect(function(deltaTime)
+	if SnowGui.Enabled then
+		for _, flake in ipairs(snowflakes) do
+			local p = flake.Position
+			local y = p.Y.Scale + deltaTime * snowSpeed
+			local x = p.X.Scale + math.sin(os.clock() * 0.8 + flake.AbsolutePosition.Y) * deltaTime * snowWind
+			if y > 1.08 then
+				y = -0.08
+				x = RNG:NextNumber(0, 1)
+			end
+			flake.Position = UDim2.fromScale(x, y)
+		end
+	end
+
+	if RainGui.Enabled then
+		for _, drop in ipairs(rainDrops) do
+			local pos = drop.Position
+			local y = pos.Y.Scale + deltaTime * rainSpeed
+			if y > 1.15 then
+				drop.Position = UDim2.fromScale(RNG:NextNumber(-0.05, 1.05), RNG:NextNumber(-0.2, -0.05))
+			else
+				drop.Position = UDim2.fromScale(pos.X.Scale - deltaTime * rainWind, y)
+			end
+		end
+	end
+
+	if visualsEnabled then
+		if colorCycleEnabled then
+			local hue = (os.clock() * 0.035) % 1
+			colorCorrection.TintColor = Color3.fromHSV(hue, 0.22, 1)
+		end
+
+		if bloomPulseEnabled and bloomEnabled then
+			bloom.Intensity = 0.65 + math.sin(os.clock() * 2.2) * 0.35
+		end
+
+		if cameraSwayEnabled then
+			local t = os.clock()
+			local sway = math.sin(t * 1.15) * 0.0015
+			camera.CFrame = camera.CFrame * CFrame.Angles(0, 0, sway)
+		end
+
+		if filmGrainEnabled then
+			FilmGrain.Rotation = RNG:NextInteger(-2, 2)
+			FilmGrain.TextTransparency = RNG:NextNumber(0.82, 0.93)
+		end
+	end
+end)
+
+-- ============================================================
+-- STUDIO LAB EXTENSION
+-- ============================================================
+
+StudioLabTab = Window:AddTab("Studio Lab", "settings")
+
+local LabState = {
+	espMaxDistance = 1500,
+	espFillTransparency = 0.72,
+	espOutlineTransparency = 0.05,
+	espOutlineThickness = 2,
+	espTextSize = 13,
+	espShowBox = true,
+	espShowHealthBar = true,
+	espShowTracer = false,
+	espRainbow = false,
+	espFadeDistance = true,
+	crosshairEnabled = true,
+	crosshairSize = 22,
+	crosshairGap = 5,
+	crosshairThickness = 2,
+	crosshairDynamic = false,
+	crosshairStyle = "+",
+	diagnostics = true,
+}
+
+local LabConnections = {}
+
+local function rememberConnection(connection)
+	if connection then
+		table.insert(LabConnections, connection)
+	end
+	return connection
+end
+
+local function disconnectLabConnections()
+	for _, connection in ipairs(LabConnections) do
+		pcall(function() connection:Disconnect() end)
+	end
+	table.clear(LabConnections)
+end
+
+local AdvancedESPFolder = Instance.new("Folder")
+AdvancedESPFolder.Name = "PrivateStudioAdvancedESP"
+AdvancedESPFolder.Parent = PlayerGui
+
+local ESPColor = Color3.fromRGB(90, 150, 255)
+local ESPOutlineColor = Color3.fromRGB(255, 255, 255)
+local ESPTextColor = Color3.fromRGB(255, 255, 255)
+local ESPTracerColor = Color3.fromRGB(120, 210, 255)
+
+local function destroyAdvancedESP()
+	for _, object in ipairs(AdvancedESPFolder:GetChildren()) do
+		object:Destroy()
+	end
+end
+
+local function makeESPPanel(target)
+	local root = target:FindFirstChild("HumanoidRootPart")
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then return end
+
+	local guiPanel = Instance.new("BillboardGui")
+	guiPanel.Name = "Advanced_" .. target.Name
+	guiPanel.Adornee = root
+	guiPanel.AlwaysOnTop = true
+	guiPanel.Size = UDim2.fromOffset(240, 110)
+	guiPanel.StudsOffset = Vector3.new(0, 3.4, 0)
+	guiPanel.Parent = AdvancedESPFolder
+
+	local frame = Instance.new("Frame")
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.Parent = guiPanel
+
+	local box = Instance.new("Frame")
+	box.Name = "Box"
+	box.BackgroundTransparency = 1
+	box.Size = UDim2.fromScale(0.62, 0.72)
+	box.Position = UDim2.fromScale(0.19, 0.08)
+	box.Visible = LabState.espShowBox
+	box.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = LabState.espOutlineThickness
+	stroke.Color = ESPColor
+	stroke.Transparency = LabState.espOutlineTransparency
+	stroke.Parent = box
+
+	local healthBack = Instance.new("Frame")
+	healthBack.Name = "HealthBack"
+	healthBack.BorderSizePixel = 0
+	healthBack.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	healthBack.BackgroundTransparency = 0.15
+	healthBack.Size = UDim2.fromOffset(5, 70)
+	healthBack.Position = UDim2.fromScale(0.15, 0.08)
+	healthBack.Visible = LabState.espShowHealthBar
+	healthBack.Parent = frame
+
+	local healthFill = Instance.new("Frame")
+	healthFill.Name = "HealthFill"
+	healthFill.BorderSizePixel = 0
+	healthFill.BackgroundColor3 = Color3.fromRGB(80, 220, 120)
+	healthFill.AnchorPoint = Vector2.new(0, 1)
+	healthFill.Position = UDim2.fromScale(0, 1)
+	healthFill.Size = UDim2.fromScale(1, 1)
+	healthFill.Parent = healthBack
+
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 0.23)
+	label.Position = UDim2.fromScale(0, 0.77)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = LabState.espTextSize
+	label.TextColor3 = ESPTextColor
+	label.TextStrokeTransparency = 0.25
+	label.Text = target.Name
+	label.Parent = frame
+
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not guiPanel.Parent or not target.Parent or humanoid.Health <= 0 then
+			pcall(function() connection:Disconnect() end)
+			if guiPanel.Parent then guiPanel:Destroy() end
+			return
+		end
+
+		if not camera then return end
+
+		local distance = (camera.CFrame.Position - root.Position).Magnitude
+		if distance > LabState.espMaxDistance then
+			guiPanel.Enabled = false
+			return
+		end
+
+		guiPanel.Enabled = ESPEnabled
+
+		local ratio = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
+		healthFill.Size = UDim2.fromScale(1, ratio)
+		healthFill.BackgroundColor3 = Color3.fromHSV(math.clamp(ratio * 0.33, 0, 0.33), 0.8, 1)
+
+		box.Visible = LabState.espShowBox
+		healthBack.Visible = LabState.espShowHealthBar
+		stroke.Thickness = LabState.espOutlineThickness
+		stroke.Color = LabState.espRainbow and Color3.fromHSV((os.clock() * 0.2) % 1, 0.8, 1) or ESPColor
+		stroke.Transparency = LabState.espOutlineTransparency
+		label.TextSize = LabState.espTextSize
+		label.Text = target.Name .. "  |  " .. math.floor(distance + 0.5) .. "m  |  " .. math.floor(humanoid.Health + 0.5) .. " HP"
+	end)
+
+	table.insert(LabConnections, connection)
+end
+
+local function rebuildAdvancedESP()
+	destroyAdvancedESP()
+	if not ESPEnabled then return end
+
+	for _, target in ipairs(getTestTargets()) do
+		makeESPPanel(target)
+	end
+end
+
+local advancedBox = StudioLabTab:AddLeftGroupbox("Advanced ESP")
+advancedBox:AddLabel("Extra local presentation controls for TestTargets and player characters.", true)
+
+advancedBox:AddToggle("LabESPBox", {
+	Text = "2D-style Box",
+	Default = true,
+	Callback = function(value)
+		LabState.espShowBox = value
+		rebuildAdvancedESP()
+	end,
+})
+
+advancedBox:AddToggle("LabESPHealthBar", {
+	Text = "Health Bar",
+	Default = true,
+	Callback = function(value)
+		LabState.espShowHealthBar = value
+		rebuildAdvancedESP()
+	end,
+})
+
+advancedBox:AddToggle("LabESPRainbow", {
+	Text = "Animated Outline",
+	Default = false,
+	Callback = function(value)
+		LabState.espRainbow = value
+	end,
+})
+
+advancedBox:AddToggle("LabESPFade", {
+	Text = "Distance Limit",
+	Default = true,
+	Callback = function(value)
+		LabState.espFadeDistance = value
+	end,
+})
+
+advancedBox:AddSlider("LabESPMaxDistance", {
+	Text = "Max Distance",
+	Default = 1500,
+	Min = 50,
+	Max = 5000,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.espMaxDistance = value
+	end,
+})
+
+advancedBox:AddSlider("LabESPTextSize", {
+	Text = "Text Size",
+	Default = 13,
+	Min = 8,
+	Max = 24,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.espTextSize = value
+		rebuildAdvancedESP()
+	end,
+})
+
+advancedBox:AddSlider("LabESPOutline", {
+	Text = "Outline Thickness",
+	Default = 2,
+	Min = 1,
+	Max = 6,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.espOutlineThickness = value
+	end,
+})
+
+advancedBox:AddSlider("LabESPTransparency", {
+	Text = "Outline Transparency",
+	Default = 0.05,
+	Min = 0,
+	Max = 1,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(value)
+		LabState.espOutlineTransparency = value
+	end,
+})
+
+advancedBox:AddLabel("ESP Color"):AddColorPicker("LabESPColor", {
+	Default = ESPColor,
+	Title = "ESP Color",
+	Callback = function(value)
+		ESPColor = value
+	end,
+})
+
+advancedBox:AddLabel("Outline Color"):AddColorPicker("LabESPOutlineColor", {
+	Default = ESPOutlineColor,
+	Title = "Outline Color",
+	Callback = function(value)
+		ESPOutlineColor = value
+	end,
+})
+
+advancedBox:AddButton({
+	Text = "Rebuild Advanced ESP",
+	Func = rebuildAdvancedESP,
+})
+
+local CrosshairLabBox = StudioLabTab:AddRightGroupbox("Crosshair Lab")
+local CrosshairParts = {}
+local CrosshairColor = Color3.fromRGB(255, 255, 255)
+
+local function clearCrosshairParts()
+	for _, object in ipairs(CrosshairParts) do
+		if object and object.Parent then object:Destroy() end
+	end
+	table.clear(CrosshairParts)
+end
+
+local function createCrosshairPart(name, position, size)
+	local part = Instance.new("Frame")
+	part.Name = name
+	part.AnchorPoint = Vector2.new(0.5, 0.5)
+	part.Position = position
+	part.Size = size
+	part.BorderSizePixel = 0
+	part.BackgroundColor3 = CrosshairColor
+	part.Parent = CrosshairGui
+	table.insert(CrosshairParts, part)
+	return part
+end
+
+local function rebuildCrosshair()
+	clearCrosshairParts()
+
+	if not LabState.crosshairEnabled then
+		if Crosshair then Crosshair.Visible = false end
+		return
+	end
+
+	if Crosshair then Crosshair.Visible = false end
+
+	local center = UDim2.fromScale(0.5, 0.5)
+	local s = LabState.crosshairSize
+	local g = LabState.crosshairGap
+	local t = LabState.crosshairThickness
+
+	if LabState.crosshairStyle == "+" then
+		createCrosshairPart("Top", UDim2.new(0.5, 0, 0.5, -(g + s / 2)), UDim2.fromOffset(t, s))
+		createCrosshairPart("Bottom", UDim2.new(0.5, 0, 0.5, g + s / 2), UDim2.fromOffset(t, s))
+		createCrosshairPart("Left", UDim2.new(0.5, -(g + s / 2), 0.5, 0), UDim2.fromOffset(s, t))
+		createCrosshairPart("Right", UDim2.new(0.5, g + s / 2, 0.5, 0), UDim2.fromOffset(s, t))
+	elseif LabState.crosshairStyle == "•" then
+		createCrosshairPart("Dot", center, UDim2.fromOffset(math.max(2, t + 1), math.max(2, t + 1)))
+	elseif LabState.crosshairStyle == "◆" then
+		local dot = createCrosshairPart("Diamond", center, UDim2.fromOffset(math.max(4, t + 4), math.max(4, t + 4)))
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 2)
+		corner.Parent = dot
+		dot.Rotation = 45
+	elseif LabState.crosshairStyle == "┼" then
+		createCrosshairPart("Horizontal", center, UDim2.fromOffset(s * 2 + g * 2, t))
+		createCrosshairPart("Vertical", center, UDim2.fromOffset(t, s * 2 + g * 2))
+	end
+end
+
+CrosshairLabBox:AddToggle("LabCrosshair", {
+	Text = "Custom Crosshair",
+	Default = true,
+	Callback = function(value)
+		LabState.crosshairEnabled = value
+		rebuildCrosshair()
+	end,
+})
+
+CrosshairLabBox:AddDropdown("LabCrosshairStyle", {
+	Values = {"+", "•", "◆", "┼"},
+	Default = "+",
+	Multi = false,
+	Text = "Style",
+	Callback = function(value)
+		LabState.crosshairStyle = value
+		rebuildCrosshair()
+	end,
+})
+
+CrosshairLabBox:AddSlider("LabCrosshairSize", {
+	Text = "Size",
+	Default = 22,
+	Min = 4,
+	Max = 50,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.crosshairSize = value
+		rebuildCrosshair()
+	end,
+})
+
+CrosshairLabBox:AddSlider("LabCrosshairGap", {
+	Text = "Gap",
+	Default = 5,
+	Min = 0,
+	Max = 20,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.crosshairGap = value
+		rebuildCrosshair()
+	end,
+})
+
+CrosshairLabBox:AddSlider("LabCrosshairThickness", {
+	Text = "Thickness",
+	Default = 2,
+	Min = 1,
+	Max = 8,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		LabState.crosshairThickness = value
+		rebuildCrosshair()
+	end,
+})
+
+CrosshairLabBox:AddLabel("Crosshair Color"):AddColorPicker("LabCrosshairColor", {
+	Default = CrosshairColor,
+	Title = "Crosshair Color",
+	Callback = function(value)
+		CrosshairColor = value
+		for _, part in ipairs(CrosshairParts) do
+			if part.Parent then part.BackgroundColor3 = value end
+		end
+	end,
+})
+
+CrosshairLabBox:AddButton({Text = "Rebuild Crosshair", Func = rebuildCrosshair})
+
+local CameraLabBox = StudioLabTab:AddLeftGroupbox("Camera Lab")
+
+CameraLabBox:AddSlider("LabCameraFOV", {
+	Text = "Field Of View",
+	Default = math.floor(originalCameraFOV),
+	Min = 50,
+	Max = 120,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(value)
+		if Workspace.CurrentCamera then Workspace.CurrentCamera.FieldOfView = value end
+	end,
+})
+
+CameraLabBox:AddToggle("LabCameraWide", {
+	Text = "Wide FOV Preview",
+	Default = false,
+	Callback = function(value)
+		if Workspace.CurrentCamera then
+			Workspace.CurrentCamera.FieldOfView = value and 105 or originalCameraFOV
+		end
+	end,
+})
+
+CameraLabBox:AddButton({
+	Text = "Reset Camera",
+	Func = function()
+		if Workspace.CurrentCamera then Workspace.CurrentCamera.FieldOfView = originalCameraFOV end
+	end,
+})
+
+local WorldLabBox = StudioLabTab:AddRightGroupbox("World Lab")
+
+WorldLabBox:AddSlider("LabWorldClock", {
+	Text = "Clock Time",
+	Default = Lighting.ClockTime,
+	Min = 0,
+	Max = 24,
+	Rounding = 1,
+	Compact = true,
+	Callback = function(value)
+		Lighting.ClockTime = value
+	end,
+})
+
+WorldLabBox:AddSlider("LabWorldBrightness", {
+	Text = "Brightness",
+	Default = Lighting.Brightness,
+	Min = 0,
+	Max = 5,
+	Rounding = 1,
+	Compact = true,
+	Callback = function(value)
+		Lighting.Brightness = value
+	end,
+})
+
+WorldLabBox:AddToggle("LabWorldShadows", {
+	Text = "Global Shadows",
+	Default = Lighting.GlobalShadows,
+	Callback = function(value)
+		Lighting.GlobalShadows = value
+	end,
+})
+
+WorldLabBox:AddButton({
+	Text = "Day Preset",
+	Func = function()
+		Lighting.ClockTime = 14
+		Lighting.Brightness = 2
+		Lighting.GlobalShadows = true
+	end,
+})
+
+WorldLabBox:AddButton({
+	Text = "Night Preset",
+	Func = function()
+		Lighting.ClockTime = 0
+		Lighting.Brightness = 1
+		Lighting.GlobalShadows = true
+	end,
+})
+
+local DiagnosticsBox = StudioLabTab:AddLeftGroupbox("Diagnostics")
+local DiagnosticLabel = DiagnosticsBox:AddLabel("Status: ready")
+local DiagnosticClock = os.clock()
+
+DiagnosticsBox:AddToggle("LabDiagnostics", {
+	Text = "Live Diagnostics",
+	Default = true,
+	Callback = function(value)
+		LabState.diagnostics = value
+	end,
+})
+
+DiagnosticsBox:AddButton({
+	Text = "Run UI Self-Test",
+	Func = function()
+		local checks = {
+			Library = Library ~= nil,
+			Window = Window ~= nil,
+			PlayerGui = PlayerGui ~= nil,
+			Camera = Workspace.CurrentCamera ~= nil,
+			FOVGui = FOVGui ~= nil and FOVGui.Parent ~= nil,
+			CrosshairGui = CrosshairGui ~= nil and CrosshairGui.Parent ~= nil,
+			ESPFolder = ESPFolder ~= nil and ESPFolder.Parent ~= nil,
+		}
+
+		local failed = {}
+		for name, ok in pairs(checks) do
+			if not ok then table.insert(failed, name) end
+		end
+
+		if #failed == 0 then
+			DiagnosticLabel:SetText("Status: all core UI checks passed")
+			Library:Notify({Title = "Self-Test", Description = "All core UI checks passed.", Time = 3})
+		else
+			local message = "Failed: " .. table.concat(failed, ", ")
+			DiagnosticLabel:SetText("Status: " .. message)
+			Library:Notify({Title = "Self-Test", Description = message, Time = 5})
+		end
+	end,
+})
+
+DiagnosticsBox:AddButton({
+	Text = "Refresh Targets",
+	Func = function()
+		updateESP()
+		rebuildAdvancedESP()
+		Library:Notify({Title = "ESP", Description = "Target lists refreshed.", Time = 2})
+	end,
+})
+
+DiagnosticsBox:AddButton({
+	Text = "Reset Visual Lab",
+	Func = function()
+		if Options.ResetAllVisuals then
+			pcall(function() Options.ResetAllVisuals:SetValue(true) end)
+		else
+			resetVisuals()
+		end
+
+		if Workspace.CurrentCamera then Workspace.CurrentCamera.FieldOfView = originalCameraFOV end
+
+		rebuildCrosshair()
+		rebuildAdvancedESP()
+	end,
+})
+
+local PerformanceBox = StudioLabTab:AddRightGroupbox("Performance")
+local FPSLabel = PerformanceBox:AddLabel("FPS: --")
+local FrameTimeLabel = PerformanceBox:AddLabel("Frame: -- ms")
+local lastFrameTime = os.clock()
+local frameCounter = 0
+local fpsTimer = os.clock()
+
+rememberConnection(RunService.RenderStepped:Connect(function(dt)
+	if not LabState.diagnostics then return end
+
+	frameCounter += 1
+	local now = os.clock()
+	lastFrameTime = now
+
+	if now - fpsTimer >= 1 then
+		FPSLabel:SetText("FPS: " .. tostring(frameCounter))
+		frameCounter = 0
+		fpsTimer = now
+	end
+
+	FrameTimeLabel:SetText(string.format("Frame: %.2f ms", dt * 1000))
+end))
+
+PerformanceBox:AddButton({
+	Text = "Low Graphics Preview",
+	Func = function()
+		Lighting.GlobalShadows = false
+		if bloom then bloom.Intensity = 0 end
+		if sunRays then sunRays.Intensity = 0 end
+		if depthOfField then depthOfField.FarIntensity = 0 end
+		if blur then blur.Size = 0 end
+
+		Library:Notify({Title = "Performance", Description = "Low graphics preview enabled.", Time = 3})
+	end,
+})
+
+PerformanceBox:AddButton({
+	Text = "Restore Lighting",
+	Func = function()
+		Lighting.GlobalShadows = originalLighting.GlobalShadows
+		Lighting.Brightness = originalLighting.Brightness
+		Lighting.ClockTime = originalLighting.ClockTime
+		Lighting.Ambient = originalLighting.Ambient
+		Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+		Lighting.ExposureCompensation = originalLighting.ExposureCompensation
+
+		Library:Notify({Title = "Performance", Description = "Original lighting restored.", Time = 3})
+	end,
+})
+
+local function attachTargetWatcher()
+	local folder = Workspace:FindFirstChild("TestTargets")
+	if not folder then return end
+
+	rememberConnection(folder.ChildAdded:Connect(function()
+		task.delay(0.1, rebuildAdvancedESP)
+	end))
+
+	rememberConnection(folder.ChildRemoved:Connect(function()
+		task.delay(0.1, rebuildAdvancedESP)
+	end))
+end
+
+attachTargetWatcher()
+
+rememberConnection(Workspace.ChildAdded:Connect(function(child)
+	if child.Name == "TestTargets" then
+		attachTargetWatcher()
+		task.delay(0.1, rebuildAdvancedESP)
+	end
+end))
+
+rebuildCrosshair()
+task.defer(rebuildAdvancedESP)
+
+-- ============================================================
+-- AETHEREA LAB
+-- ============================================================
+
+AethereaTab = Window:AddTab("Aetherea Lab", "sparkles")
+
+local AethereaStatus = AethereaTab:AddLeftGroupbox("Aetherea Visual Lab")
+AethereaStatus:AddLabel(
+	"PRIVATE VISUAL PACK\n\n" ..
+	"Skybox, lighting, weather, crosshair, camera and viewmodel-style presentation.\n" ..
+	"All changes are local to this private test environment.",
+	true
+)
+
+local AethereaSkyboxPresets = {
+	["None"] = {"14147881792", "14147882149", "14147882761", "14147883091", "14147882405", "14147881297"},
+	["Aurora"] = {"116533337330584", "80054106187171", "94459139270943", "116368999680791", "125758104196312", "107060226443967"},
+	["Battlerock"] = {"131136284306917", "89505977207531", "140099243548102", "121676169821100", "97183886241447", "107128620201556"},
+	["Beach Bowl"] = {"81804134601271", "92395364196932", "81804134601271", "81804134601271", "81804134601271", "119089964803065"},
+	["Buoy Base"] = {"135017685421888", "76610044495625", "89675413438577", "138307087837279", "136723547010707", "83404878914838"},
+	["Clockwork"] = {"86284761193226", "111425663631622", "115606366886873", "127287488325060", "126844150113423", "74510789204352"},
+	["Dark Matter"] = {"97629693450922", "97898396690232", "134755033418084", "118219143707956", "114940065588775", "95430908943263"},
+	["Flash Black"] = {"78426835654353", "6213218651", "71970982976722", "78426835654353", "78426835654353", "138004866371717"},
+	["Ghostly"] = {"111506743048183", "86198196348228", "86265514167302", "100257959405445", "71935101953120", "132011089223498"},
+	["Good Egg"] = {"94681381933012", "75843838469806", "97891957473259", "102971518965494", "94588890960775", "127368871569815"},
+	["Melty Molten"] = {"131463907527649", "116154164311420", "113077689016278", "79984367513909", "82395195737484", "117530106700350"},
+	["Shiverburn"] = {"113636030839991", "118027268179499", "76405010847029", "112044353352688", "121078604572355", "132486295432727"},
+	["Spin Dig"] = {"124211111366754", "120491795220431", "130119279111055", "70742671331562", "76516826791940", "100229310567751"},
+	["Sweet Mystery"] = {"107264897520277", "135637946277638", "135705252786048", "119667604517747", "75904303027092", "97011146822716"},
+	["Terrace Dome"] = {"98684100016510", "108354040356521", "95723629635852", "106269064939837", "136234415079744", "75385962780878"},
+}
+
+local AethereaOriginalSky = nil
+local AethereaSky = nil
+
+local function getAethereaSky()
+	local sky = Lighting:FindFirstChild("AethereaLabSky")
+	if not sky then
+		sky = Instance.new("Sky")
+		sky.Name = "AethereaLabSky"
+		sky.Parent = Lighting
+	end
+	return sky
+end
+
+local function saveOriginalSky()
+	if AethereaOriginalSky ~= nil then return end
+
+	local current = Lighting:FindFirstChildOfClass("Sky")
+	if current then
+		AethereaOriginalSky = current:Clone()
+	else
+		AethereaOriginalSky = false
+	end
+end
+
+local function restoreAethereaSky()
+	local lab = Lighting:FindFirstChild("AethereaLabSky")
+	if lab then lab:Destroy() end
+
+	local current = Lighting:FindFirstChildOfClass("Sky")
+	if current and current.Name == "AethereaLabSky" then current:Destroy() end
+
+	if AethereaOriginalSky and typeof(AethereaOriginalSky) == "Instance" then
+		local clone = AethereaOriginalSky:Clone()
+		clone.Parent = Lighting
+	end
+
+	AethereaSky = nil
+end
+
+local skyNames = {}
+for name in pairs(AethereaSkyboxPresets) do table.insert(skyNames, name) end
+table.sort(skyNames)
+
+local SkyBox = AethereaTab:AddLeftGroupbox("Skybox Lab")
+
+SkyBox:AddDropdown("AethereaSkyPreset", {
+	Values = skyNames,
+	Default = "Aurora",
+	Multi = false,
+	Text = "Skybox Preset",
+	Callback = function(name)
+		if not (Options.AethereaSkyEnabled and Options.AethereaSkyEnabled.Value) then return end
+
+		saveOriginalSky()
+
+		local ids = AethereaSkyboxPresets[name]
+		if not ids then return end
+
+		local sky = getAethereaSky()
+		AethereaSky = sky
+
+		sky.SkyboxBk = "rbxassetid://" .. ids[1]
+		sky.SkyboxDn = "rbxassetid://" .. ids[2]
+		sky.SkyboxFt = "rbxassetid://" .. ids[3]
+		sky.SkyboxLf = "rbxassetid://" .. ids[4]
+		sky.SkyboxRt = "rbxassetid://" .. ids[5]
+		sky.SkyboxUp = "rbxassetid://" .. ids[6]
+		sky.SunTextureId = "rbxasset://sky/sun.jpg"
+		sky.MoonTextureId = "rbxasset://sky/moon.jpg"
+		sky.StarCount = 3000
+	end,
+})
+
+SkyBox:AddToggle("AethereaSkyEnabled", {
+	Text = "Skybox Enabled",
+	Default = false,
+	Callback = function(v)
+		if v then
+			saveOriginalSky()
+
+			if not AethereaSky then
+				local ids = AethereaSkyboxPresets[Options.AethereaSkyPreset.Value or "Aurora"]
+				if ids then
+					local sky = getAethereaSky()
+					AethereaSky = sky
+
+					sky.SkyboxBk = "rbxassetid://" .. ids[1]
+					sky.SkyboxDn = "rbxassetid://" .. ids[2]
+					sky.SkyboxFt = "rbxassetid://" .. ids[3]
+					sky.SkyboxLf = "rbxassetid://" .. ids[4]
+					sky.SkyboxRt = "rbxassetid://" .. ids[5]
+					sky.SkyboxUp = "rbxassetid://" .. ids[6]
+				end
+			end
+		else
+			restoreAethereaSky()
+		end
+	end,
+})
+
+SkyBox:AddSlider("AethereaStarCount", {
+	Text = "Star Count",
+	Default = 3000, Min = 0, Max = 10000, Rounding = 0, Compact = true,
+	Callback = function(v) if AethereaSky then AethereaSky.StarCount = v end end,
+})
+
+SkyBox:AddSlider("AethereaSunSize", {
+	Text = "Sun Angular Size",
+	Default = 21, Min = 0, Max = 45, Rounding = 0, Compact = true,
+	Callback = function(v) if AethereaSky then AethereaSky.SunAngularSize = v end end,
+})
+
+local AethereaLightingOriginal = {
+	Brightness = Lighting.Brightness,
+	ClockTime = Lighting.ClockTime,
+	GlobalShadows = Lighting.GlobalShadows,
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	ExposureCompensation = Lighting.ExposureCompensation,
+}
+
+local AethereaLightingBox = AethereaTab:AddRightGroupbox("Lighting Lab")
+
+AethereaLightingBox:AddSlider("AethereaBrightness", {
+	Text = "Brightness", Default = Lighting.Brightness, Min = 0, Max = 10, Rounding = 2, Compact = true,
+	Callback = function(v) Lighting.Brightness = v end,
+})
+
+AethereaLightingBox:AddSlider("AethereaClock", {
+	Text = "Clock Time", Default = Lighting.ClockTime, Min = 0, Max = 24, Rounding = 1, Compact = true,
+	Callback = function(v) Lighting.ClockTime = v end,
+})
+
+AethereaLightingBox:AddSlider("AethereaExposure", {
+	Text = "Exposure", Default = Lighting.ExposureCompensation, Min = -3, Max = 3, Rounding = 2, Compact = true,
+	Callback = function(v) Lighting.ExposureCompensation = v end,
+})
+
+AethereaLightingBox:AddToggle("AethereaShadows", {
+	Text = "Global Shadows", Default = Lighting.GlobalShadows,
+	Callback = function(v) Lighting.GlobalShadows = v end,
+})
+
+AethereaLightingBox:AddButton({
+	Text = "Restore Lighting",
+	Func = function()
+		for k, v in pairs(AethereaLightingOriginal) do Lighting[k] = v end
+	end
+})
+
+local AethereaWeatherGui = Instance.new("ScreenGui")
+AethereaWeatherGui.Name = "AethereaLabWeather"
+AethereaWeatherGui.IgnoreGuiInset = true
+AethereaWeatherGui.ResetOnSpawn = false
+AethereaWeatherGui.DisplayOrder = 45
+AethereaWeatherGui.Parent = PlayerGui
+
+local AethereaWeatherFrame = Instance.new("Frame")
+AethereaWeatherFrame.BackgroundTransparency = 1
+AethereaWeatherFrame.Size = UDim2.fromScale(1, 1)
+AethereaWeatherFrame.Parent = AethereaWeatherGui
+
+local AethereaRain = {}
+local AethereaSnow = {}
+
+for i = 1, 55 do
+	local d = Instance.new("Frame")
+	d.BorderSizePixel = 0
+	d.BackgroundColor3 = Color3.fromRGB(190, 215, 255)
+	d.BackgroundTransparency = 0.45
+	d.Size = UDim2.fromOffset(1, math.random(8, 18))
+	d.Position = UDim2.fromScale(math.random(), math.random())
+	d.Rotation = -15
+	d.Visible = false
+	d.Parent = AethereaWeatherFrame
+	table.insert(AethereaRain, d)
+
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0
+	f.BackgroundColor3 = Color3.new(1, 1, 1)
+	f.BackgroundTransparency = 0.25
+	f.Size = UDim2.fromOffset(math.random(2, 5), math.random(2, 5))
+	f.Position = UDim2.fromScale(math.random(), math.random())
+	f.Visible = false
+	f.Parent = AethereaWeatherFrame
+	table.insert(AethereaSnow, f)
+end
+
+local AethereaWeatherConn
+
+local function setAethereaWeather(kind, enabled)
+	for _, v in ipairs(AethereaRain) do v.Visible = enabled and kind == "Rain" end
+	for _, v in ipairs(AethereaSnow) do v.Visible = enabled and kind == "Snow" end
+end
+
+AethereaWeatherConn = RunService.RenderStepped:Connect(function(dt)
+	if _G.AethereaCameraSway and Workspace.CurrentCamera then
+		local cam = Workspace.CurrentCamera
+		local t = os.clock()
+		cam.CFrame = cam.CFrame * CFrame.Angles(
+			math.sin(t * 1.15) * 0.0008,
+			math.cos(t * 0.9) * 0.0008,
+			math.sin(t * 0.75) * 0.0005
+		)
+	end
+
+	for _, d in ipairs(AethereaRain) do
+		if d.Visible then
+			local p = d.Position
+			local y = p.Y.Scale + dt * 1.45
+			local x = p.X.Scale - dt * 0.08
+			if y > 1.1 then y = -0.1; x = math.random() end
+			d.Position = UDim2.fromScale(x, y)
+		end
+	end
+
+	for _, f in ipairs(AethereaSnow) do
+		if f.Visible then
+			local p = f.Position
+			local y = p.Y.Scale + dt * 0.18
+			local x = p.X.Scale + math.sin(os.clock() + f.AbsolutePosition.Y) * dt * 0.02
+			if y > 1.1 then y = -0.1; x = math.random() end
+			f.Position = UDim2.fromScale(x, y)
+		end
+	end
+end)
+
+local WeatherBox = AethereaTab:AddLeftGroupbox("Weather")
+
+WeatherBox:AddDropdown("AethereaWeatherType", {
+	Values = {"Off", "Rain", "Snow"}, Default = "Off", Multi = false, Text = "Weather",
+	Callback = function(v) setAethereaWeather(v, v ~= "Off") end,
+})
+
+WeatherBox:AddSlider("AethereaWeatherOpacity", {
+	Text = "Weather Opacity", Default = 45, Min = 5, Max = 90, Rounding = 0, Compact = true,
+	Callback = function(v)
+		local t = 1 - (v / 100)
+		for _, d in ipairs(AethereaRain) do d.BackgroundTransparency = t end
+		for _, f in ipairs(AethereaSnow) do f.BackgroundTransparency = t end
+	end,
+})
+
+local AethereaCrosshairGui = Instance.new("ScreenGui")
+AethereaCrosshairGui.Name = "AethereaLabCrosshair"
+AethereaCrosshairGui.IgnoreGuiInset = true
+AethereaCrosshairGui.ResetOnSpawn = false
+AethereaCrosshairGui.DisplayOrder = 46
+AethereaCrosshairGui.Parent = PlayerGui
+
+local AethereaCrosshair = Instance.new("TextLabel")
+AethereaCrosshair.BackgroundTransparency = 1
+AethereaCrosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+AethereaCrosshair.Position = UDim2.fromScale(0.5, 0.5)
+AethereaCrosshair.Size = UDim2.fromOffset(80, 80)
+AethereaCrosshair.Font = Enum.Font.GothamBold
+AethereaCrosshair.Text = "+"
+AethereaCrosshair.TextSize = 24
+AethereaCrosshair.TextColor3 = Color3.new(1, 1, 1)
+AethereaCrosshair.TextStrokeTransparency = 0.25
+AethereaCrosshair.Visible = false
+AethereaCrosshair.Parent = AethereaCrosshairGui
+
+local CrossBox = AethereaTab:AddRightGroupbox("Crosshair Lab")
+
+CrossBox:AddToggle("AethereaCrosshairEnabled", {
+	Text = "Custom Crosshair",
+	Default = false,
+	Callback = function(v) AethereaCrosshair.Visible = v end
+})
+
+CrossBox:AddDropdown("AethereaCrosshairStyle", {
+	Values = {"+", "×", "•", "◆", "┼"},
+	Default = "+",
+	Multi = false,
+	Text = "Style",
+	Callback = function(v) AethereaCrosshair.Text = v end
+})
+
+CrossBox:AddSlider("AethereaCrosshairSize", {
+	Text = "Text Size",
+	Default = 24,
+	Min = 8,
+	Max = 64,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(v) AethereaCrosshair.TextSize = v end
+})
+
+CrossBox:AddSlider("AethereaCrosshairStroke", {
+	Text = "Outline",
+	Default = 25,
+	Min = 0,
+	Max = 100,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(v) AethereaCrosshair.TextStrokeTransparency = v / 100 end
+})
+
+local AethereaPost = AethereaTab:AddLeftGroupbox("Post Processing")
+
+local AethereaBloom = Instance.new("BloomEffect")
+AethereaBloom.Name = "AethereaLabBloom"
+AethereaBloom.Enabled = false
+AethereaBloom.Parent = Lighting
+
+local AethereaBlur = Instance.new("BlurEffect")
+AethereaBlur.Name = "AethereaLabBlur"
+AethereaBlur.Enabled = false
+AethereaBlur.Parent = Lighting
+
+local AethereaCC = Instance.new("ColorCorrectionEffect")
+AethereaCC.Name = "AethereaLabColor"
+AethereaCC.Enabled = false
+AethereaCC.Parent = Lighting
+
+AethereaPost:AddToggle("AethereaBloom", {
+	Text = "Bloom",
+	Default = false,
+	Callback = function(v) AethereaBloom.Enabled = v end
+})
+
+AethereaPost:AddSlider("AethereaBloomIntensity", {
+	Text = "Bloom Intensity",
+	Default = 1,
+	Min = 0,
+	Max = 5,
+	Rounding = 2,
+	Compact = true,
+	Callback = function(v) AethereaBloom.Intensity = v end
+})
+
+AethereaPost:AddToggle("AethereaBlur", {
+	Text = "Blur",
+	Default = false,
+	Callback = function(v) AethereaBlur.Enabled = v end
+})
+
+AethereaPost:AddSlider("AethereaBlurSize", {
+	Text = "Blur Size",
+	Default = 6,
+	Min = 0,
+	Max = 24,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(v) AethereaBlur.Size = v end
+})
+
+AethereaPost:AddToggle("AethereaColorCorrection", {
+	Text = "Color Correction",
+	Default = false,
+	Callback = function(v) AethereaCC.Enabled = v end
+})
+
+AethereaPost:AddDropdown("AethereaColorPreset", {
+	Values = {"Normal", "Cinematic", "Cold", "Warm", "Neon"},
+	Default = "Normal",
+	Multi = false,
+	Text = "Color Preset",
+	Callback = function(v)
+		local presets = {
+			Normal = {0, 0, 0, Color3.new(1, 1, 1)},
+			Cinematic = {-0.02, 0.22, -0.08, Color3.fromRGB(235, 240, 255)},
+			Cold = {0, 0.12, 0.05, Color3.fromRGB(190, 220, 255)},
+			Warm = {0.02, 0.08, 0.18, Color3.fromRGB(255, 225, 190)},
+			Neon = {0.03, 0.25, 0.45, Color3.fromRGB(220, 255, 240)},
+		}
+
+		local x = presets[v] or presets.Normal
+		AethereaCC.Brightness = x[1]
+		AethereaCC.Contrast = x[2]
+		AethereaCC.Saturation = x[3]
+		AethereaCC.TintColor = x[4]
+	end
+})
+
+local AethereaCameraBox = AethereaTab:AddRightGroupbox("Camera")
+
+AethereaCameraBox:AddSlider("AethereaFOV", {
+	Text = "Field Of View",
+	Default = camera and camera.FieldOfView or 70,
+	Min = 40,
+	Max = 120,
+	Rounding = 0,
+	Compact = true,
+	Callback = function(v) if camera then camera.FieldOfView = v end end
+})
+
+AethereaCameraBox:AddToggle("AethereaCameraSway", {
+	Text = "Camera Sway",
+	Default = false,
+	Callback = function(v) _G.AethereaCameraSway = v end
+})
+
+AethereaCameraBox:AddButton({
+	Text = "Reset Camera",
+	Func = function()
+		camera = Workspace.CurrentCamera
+		if camera then camera.FieldOfView = 70 end
+	end
+})
+
+local AethereaReset = AethereaTab:AddRightGroupbox("Reset All")
+
+AethereaReset:AddButton({
+	Text = "Reset Aetherea Lab",
+	Func = function()
+		if Options.AethereaSkyEnabled then pcall(function() Options.AethereaSkyEnabled:SetValue(false) end) end
+		restoreAethereaSky()
+
+		for _, d in ipairs(AethereaRain) do d.Visible = false end
+		for _, f in ipairs(AethereaSnow) do f.Visible = false end
+
+		AethereaCrosshair.Visible = false
+		AethereaBloom.Enabled = false
+		AethereaBlur.Enabled = false
+		AethereaCC.Enabled = false
+
+		for k, v in pairs(AethereaLightingOriginal) do Lighting[k] = v end
+
+		_G.AethereaCameraSway = false
+		camera = Workspace.CurrentCamera
+		if camera then camera.FieldOfView = 70 end
+
+		Library:Notify({Title = "Aetherea Lab", Description = "Visual settings restored.", Time = 2})
+	end
+})
+
+AethereaStatus:AddButton({
+	Text = "Test Aetherea Tab",
+	Func = function()
+		Library:Notify({Title = "Aetherea Lab", Description = "The separate visual tab is working.", Time = 2})
+	end
+})
+
+local UITab = Window:AddTab("UI Settings", "settings")
+
+local Tabs = {
+	Main = MainTab,
+	Visuals = VisualsTab,
+	Aetherea = AethereaTab,
+	["UI Settings"] = UITab
+}
+
+-- ============================================================
+-- BROKECHEAT / UE COUNTER
+-- ============================================================
+
+local CountersBox = Tabs.Main:AddLeftGroupbox("Counters")
+
+local counterYDistance = 100
+local counterCooldown = 0.2
+local counterEnabled = false
+
+local function counterTeleport()
+	local Character = LocalPlayer.Character
+	if not Character then
+		Character = LocalPlayer.CharacterAdded:Wait()
+	end
+
+	local Root = Character:WaitForChild("HumanoidRootPart")
+	Root.CFrame = CFrame.new(Root.Position + Vector3.new(0, counterYDistance, 0))
+end
+
+CountersBox:AddToggle("UECounter", {
+	Text = "UE Counter",
+	Tooltip = "Counters UE's ragebot",
+	-- Executor-safe default: OFF so you don't fly on load.
+	-- Flip to true if you want it armed at execution.
+	Default = false,
+	Callback = function(value)
+		counterEnabled = value
+
+		if counterEnabled then
+			task.spawn(function()
+				while counterEnabled and not Library.Unloaded do
+					counterTeleport()
+					task.wait(counterCooldown)
+				end
+			end)
+		end
+	end
+})
+
+CountersBox:AddDivider()
+
+CountersBox:AddSlider("CounterCooldown", {
+	Text = "Teleport cooldown",
+	Default = 0.2,
+	Min = 0,
+	Max = 1,
+	Rounding = 2,
+	Compact = false,
+	Callback = function(value)
+		counterCooldown = value
+	end,
+	Tooltip = "Delay between counter teleports"
+})
+
+CountersBox:AddSlider("CounterYDistance", {
+	Text = "Y distance",
+	Default = 100,
+	Min = 100,
+	Max = 1000,
+	Rounding = 0,
+	Compact = false,
+	Callback = function(value)
+		counterYDistance = value
+	end,
+	Tooltip = "Vertical distance used by the UE Counter"
+})
+
+Tabs.Main:AddLeftGroupbox("Info"):AddLabel(
+	"Counters UE's ragebot by increasing your Y coordinate.\n" ..
+	"Adjust distance and cooldown with the sliders.",
+	true
+)
+
+Library:AddDraggableLabel("le brokecheat tuff counter")
+
+-- ============================================================
+-- UI SETTINGS
+-- ============================================================
+
+local MenuBox = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
+
+MenuBox:AddToggle("KeybindMenuOpen", {
+	Default = Library.KeybindFrame.Visible,
+	Text = "Open Keybind Menu",
+	Callback = function(value)
+		Library.KeybindFrame.Visible = value
+	end
+})
+
+MenuBox:AddToggle("ShowCustomCursor", {
+	Text = "Custom Cursor",
+	Default = Library.ShowCustomCursor,
+	Callback = function(value)
+		Library.ShowCustomCursor = value
+	end
+})
+
+MenuBox:AddToggle("AlwaysOnTop", {
+	Text = "Always On Top",
+	Default = Window.AlwaysOnTop,
+	Callback = function(value)
+		Window:SetAlwaysOnTop(value)
+	end
+})
+
+MenuBox:AddDropdown("NotificationSide", {
+	Values = {"Left", "Right"},
+	Default = "Right",
+	Text = "Notification Side",
+	Callback = function(value)
+		Library:SetNotifySide(value)
+	end
+})
+
+MenuBox:AddDropdown("DPIDropdown", {
+	Values = {"50%", "75%", "100%", "125%", "150%", "175%", "200%"},
+	Default = "100%",
+	Text = "DPI Scale",
+	Callback = function(value)
+		Library:SetDPIScale(tonumber(value:gsub("%%", "")))
+	end
+})
+
+MenuBox:AddSlider("UICornerSlider", {
+	Text = "Corner Radius",
+	Default = Library.CornerRadius,
+	Min = 0,
+	Max = 20,
+	Rounding = 0,
+	Callback = function(value)
+		Window:SetCornerRadius(value)
+	end
+})
+
+MenuBox:AddDivider()
+
+MenuBox:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
+	Default = "RightShift",
+	NoUI = true,
+	Text = "Menu keybind"
+})
+
+MenuBox:AddButton("Unload", function()
+	counterEnabled = false
+
+	if CrosshairGui then CrosshairGui:Destroy() end
+
+	pcall(function()
+		RunService:UnbindFromRenderStep("PrivateProjectAim")
+	end)
+
+	if ESPFolder then ESPFolder:Destroy() end
+	if FOVGui then FOVGui:Destroy() end
+	if RainGui then RainGui:Destroy() end
+	if SnowGui then SnowGui:Destroy() end
+	if VisualOverlay then VisualOverlay:Destroy() end
+	if WeatherConnection then WeatherConnection:Disconnect() end
+
+	disconnectLabConnections()
+
+	if AdvancedESPFolder then AdvancedESPFolder:Destroy() end
+
+	clearCrosshairParts()
+
+	if bloom then bloom:Destroy() end
+	if colorCorrection then colorCorrection:Destroy() end
+	if atmosphere then atmosphere:Destroy() end
+
+	if AethereaWeatherConn then AethereaWeatherConn:Disconnect() end
+	if AethereaWeatherGui then AethereaWeatherGui:Destroy() end
+	if AethereaCrosshairGui then AethereaCrosshairGui:Destroy() end
+	if AethereaBloom then AethereaBloom:Destroy() end
+	if AethereaBlur then AethereaBlur:Destroy() end
+	if AethereaCC then AethereaCC:Destroy() end
+
+	restoreAethereaSky()
+	Library:Unload()
+end)
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+-- ============================================================
+-- SAVE / THEME MANAGER
+-- ============================================================
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({"MenuKeybind"})
+ThemeManager:SetFolder("brokecheatcounter")
+SaveManager:SetFolder("brokecheatcounter/rivals")
+SaveManager:SetSubFolder("rivals")
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+ThemeManager:ApplyToTab(Tabs["UI Settings"])
+SaveManager:LoadAutoloadConfig()
+
+print("[Brokecheat] Private executor UI loaded.")
+
+local finalTargetFolder = Workspace:FindFirstChild("TestTargets")
+if finalTargetFolder then
+	print("[ESP] TestTargets:", finalTargetFolder:GetFullName())
+else
+	print("[ESP] No TestTargets folder; player-character detection is enabled.")
+end
+
+pcall(function()
+	if Library.Toggle then
+		Library:Toggle(true)
+	end
+end)
